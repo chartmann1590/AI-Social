@@ -16,6 +16,16 @@ A React Native + Expo app that simulates a social media experience powered by a 
 - `src/config.ts` holds local runtime config (see `src/config.example.ts`).
 - `assets/` contains app icons and images.
 
+## Screenshots
+- Feed (home): `screenshots/home.png`
+![Feed](screenshots/home.png)
+- Post comments: `screenshots/comments.png`
+![Comments](screenshots/comments.png)
+- New post: `screenshots/new-post.png`
+![New Post](screenshots/new-post.png)
+- Settings (theme selection): `screenshots/settings.png`
+![Settings](screenshots/settings.png)
+
 ## Setup
 1. Install Node.js (LTS).
 2. Install and start Ollama (`ollama serve`).
