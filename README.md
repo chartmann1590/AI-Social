@@ -17,14 +17,20 @@ A React Native + Expo app that simulates a social media experience powered by a 
 - `assets/` contains app icons and images.
 
 ## Screenshots
-- Feed (home): `screenshots/home.png`
-![Feed](screenshots/home.png)
-- Post comments: `screenshots/comments.png`
-![Comments](screenshots/comments.png)
-- New post: `screenshots/new-post.png`
-![New Post](screenshots/new-post.png)
-- Settings (theme selection): `screenshots/settings.png`
-![Settings](screenshots/settings.png)
+<table>
+  <tr>
+    <td align="center">Feed</td>
+    <td align="center">Comments</td>
+    <td align="center">New Post</td>
+    <td align="center">Settings</td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/home.png" alt="Feed" width="200" /></td>
+    <td><img src="screenshots/comments.png" alt="Comments" width="200" /></td>
+    <td><img src="screenshots/new-post.png" alt="New Post" width="200" /></td>
+    <td><img src="screenshots/settings.png" alt="Settings" width="200" /></td>
+  </tr>
+</table>
 
 ## Setup
 1. Install Node.js (LTS).
