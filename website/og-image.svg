@@ -1,17 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#141210"/>
-      <stop offset="100%" style="stop-color:#0a0908"/>
+      <stop offset="0%" stop-color="#03050a"/>
+      <stop offset="55%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="3" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    <linearGradient id="text" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="40%" stop-color="#5eead4"/>
+      <stop offset="100%" stop-color="#fda4af"/>
+    </linearGradient>
   </defs>
   <rect width="1200" height="630" fill="url(#bg)"/>
-  <rect x="60" y="60" width="1080" height="510" rx="24" fill="none" stroke="#e8a54b" stroke-width="2" opacity="0.35"/>
-  <text x="120" y="280" fill="#f4efe6" font-family="Georgia, serif" font-size="72" font-weight="700">AI Social</text>
-  <text x="120" y="360" fill="#c9b8a0" font-family="Georgia, serif" font-size="32">Simulated feed. Real models. Your device or your Ollama.</text>
-  <text x="120" y="480" fill="#e8a54b" font-family="Georgia, serif" font-size="22" opacity="0.9">chartmann1590.github.io/AI-Social</text>
+  <rect x="72" y="72" width="1056" height="486" rx="28" fill="none" stroke="rgba(148,163,184,0.2)" stroke-width="2"/>
+  <text x="120" y="300" fill="url(#text)" font-family="Georgia, 'Times New Roman', serif" font-size="76" font-weight="700">AI Social</text>
+  <text x="120" y="380" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="30" font-weight="500">Simulated feed. Your models. Your rules.</text>
+  <text x="120" y="500" fill="#2dd4bf" font-family="system-ui, sans-serif" font-size="22" font-weight="600">chartmann1590.github.io/AI-Social</text>
 </svg>
