@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#141210"/>
+      <stop offset="100%" style="stop-color:#0a0908"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="60" y="60" width="1080" height="510" rx="24" fill="none" stroke="#e8a54b" stroke-width="2" opacity="0.35"/>
+  <text x="120" y="280" fill="#f4efe6" font-family="Georgia, serif" font-size="72" font-weight="700">AI Social</text>
+  <text x="120" y="360" fill="#c9b8a0" font-family="Georgia, serif" font-size="32">Simulated feed. Real models. Your device or your Ollama.</text>
+  <text x="120" y="480" fill="#e8a54b" font-family="Georgia, serif" font-size="22" opacity="0.9">charleshartmann.github.io/AI-Social</text>
+</svg>
