@@ -1,30 +1,176 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { TextInput, Button, Switch, Text, Divider, SegmentedButtons, useTheme } from 'react-native-paper';
-import { useSettingsStore } from '../store';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, ScrollView, StyleSheet, Platform, NativeModules } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import {
+  TextInput,
+  Button,
+  Switch,
+  Text,
+  Divider,
+  SegmentedButtons,
+  useTheme,
+} from 'react-native-paper';
+import { useSettingsStore, useUserStore } from '../store';
 import { DEFAULT_CONFIG } from '../config';
+import type { LlmMode } from '../types';
+
+const nativeLiteRtPresent =
+  Platform.OS === 'android' && NativeModules.AISocialLiteRtLlm != null;
 
 export const SettingsScreen = () => {
   const theme = useTheme();
+  const navigation = useNavigation<any>();
   const {
     baseUrl,
     model,
     useStreaming,
     themePreference,
+    llmMode,
+    enableRemoteFallback,
+    localModelPath,
+    localMaxTokens,
+    localTemperature,
     setBaseUrl,
     setModel,
     setUseStreaming,
     setThemePreference,
+    setLlmMode,
+    setEnableRemoteFallback,
+    setLocalModelPath,
+    setLocalMaxTokens,
+    setLocalTemperature,
   } = useSettingsStore();
 
-  // Load defaults from config
-  const defaultUrl = DEFAULT_CONFIG.OLLAMA_BASE_URL;
-  const defaultModel = DEFAULT_CONFIG.OLLAMA_MODEL;
+  const [localReady, setLocalReady] = useState<boolean | null>(null);
+  const [checkingLocal, setCheckingLocal] = useState(false);
+
+  const defaultUrl = DEFAULT_CONFIG.OLLAMA_BASE_URL || 'http://<your-server>:11434';
+  const defaultModel = DEFAULT_CONFIG.OLLAMA_MODEL || 'llama3.2';
+
+  const probeLocal = useCallback(async () => {
+    if (!nativeLiteRtPresent) {
+      setLocalReady(false);
+      return;
+    }
+    const mod = NativeModules.AISocialLiteRtLlm as { isReady?: () => Promise<boolean> };
+    if (!mod.isReady) {
+      setLocalReady(false);
+      return;
+    }
+    setCheckingLocal(true);
+    try {
+      const ok = await mod.isReady();
+      setLocalReady(ok);
+    } catch {
+      setLocalReady(false);
+    } finally {
+      setCheckingLocal(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    probeLocal();
+  }, [probeLocal, localModelPath]);
+
+  const llmModeButtons = [
+    { value: 'hybrid' as const, label: 'Hybrid' },
+    { value: 'local' as const, label: 'On-device' },
+    { value: 'remote' as const, label: 'Remote' },
+  ];
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text variant="headlineMedium" style={styles.header}>Configuration</Text>
-      
+    <ScrollView
+      style={[styles.scroll, { backgroundColor: theme.colors.background }]}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text variant="headlineMedium" style={styles.header}>
+        Configuration
+      </Text>
+
+      <Button mode="text" icon="information-outline" compact onPress={() => navigation.navigate('About')} style={styles.aboutLink}>
+        About this app
+      </Button>
+
+      <Button mode="contained-tonal" icon="download" onPress={() => navigation.navigate('Models')} style={styles.modelsLink}>
+        Download Gemma 4, Gemma 3, Qwen, DeepSeek R1 (.task)
+      </Button>
+
+      <Text variant="titleSmall" style={styles.sectionTitle}>
+        LLM mode
+      </Text>
+      <SegmentedButtons
+        value={llmMode}
+        onValueChange={(value) => setLlmMode(value as LlmMode)}
+        buttons={llmModeButtons}
+      />
+      <Text variant="bodySmall" style={[styles.helper, { color: theme.colors.onSurfaceVariant }]}>
+        Hybrid tries on-device first, then Ollama if enabled below. Remote uses Ollama only.
+      </Text>
+
+      <View style={styles.row}>
+        <Text variant="bodyLarge">Remote fallback (hybrid)</Text>
+        <Switch value={enableRemoteFallback} onValueChange={setEnableRemoteFallback} />
+      </View>
+
+      <Divider style={styles.divider} />
+
+      <Text variant="titleSmall" style={styles.sectionTitle}>
+        On-device (Android + dev build)
+      </Text>
+      <Text variant="bodySmall" style={[styles.helper, { color: theme.colors.onSurfaceVariant }]}>
+        {nativeLiteRtPresent
+          ? 'Native module present. Push a MediaPipe `.task` model to the device and set the absolute path.'
+          : 'Expo Go cannot load this module. Run `npx expo run:android` once, then use `npm start` and open the dev client app (not Expo Go).'}
+      </Text>
+      {nativeLiteRtPresent && (
+        <Text variant="bodySmall" style={[styles.helper, { color: theme.colors.primary }]}>
+          Engine status:{' '}
+          {checkingLocal
+            ? 'Checking…'
+            : localReady === null
+              ? '—'
+              : localReady
+                ? 'Initialized'
+                : 'Not initialized (set model path & use feed)'}
+        </Text>
+      )}
+      <TextInput
+        label="Local model absolute path"
+        value={localModelPath}
+        onChangeText={setLocalModelPath}
+        mode="outlined"
+        placeholder="/data/local/tmp/llm/your_model.task"
+        style={[styles.input, { backgroundColor: theme.colors.surface }]}
+      />
+      <TextInput
+        label="Max tokens (local)"
+        value={String(localMaxTokens)}
+        onChangeText={(t) => {
+          const n = parseInt(t.replace(/[^\d]/g, ''), 10);
+          if (!Number.isNaN(n)) setLocalMaxTokens(Math.min(8192, Math.max(256, n)));
+        }}
+        keyboardType="number-pad"
+        mode="outlined"
+        style={[styles.input, { backgroundColor: theme.colors.surface }]}
+      />
+      <TextInput
+        label="Temperature (local)"
+        value={String(localTemperature)}
+        onChangeText={(t) => {
+          const n = parseFloat(t.replace(/[^\d.]/g, ''));
+          if (!Number.isNaN(n)) setLocalTemperature(Math.min(2, Math.max(0, n)));
+        }}
+        keyboardType="decimal-pad"
+        mode="outlined"
+        style={[styles.input, { backgroundColor: theme.colors.surface }]}
+      />
+
+      <Divider style={styles.divider} />
+
+      <Text variant="titleSmall" style={styles.sectionTitle}>
+        Ollama (remote)
+      </Text>
       <TextInput
         label="Ollama Base URL"
         value={baseUrl}
@@ -34,7 +180,7 @@ export const SettingsScreen = () => {
         style={[styles.input, { backgroundColor: theme.colors.surface }]}
       />
       <Text variant="bodySmall" style={[styles.helper, { color: theme.colors.onSurfaceVariant }]}>
-        e.g., http://192.168.1.50:11434 (Use LAN IP for physical devices)
+        Use your Ollama host's LAN / VPN URL. Leave empty if using On-device only.
       </Text>
 
       <TextInput
@@ -58,7 +204,9 @@ export const SettingsScreen = () => {
 
       <Divider style={styles.divider} />
 
-      <Text variant="bodyLarge" style={styles.sectionTitle}>Theme</Text>
+      <Text variant="bodyLarge" style={styles.sectionTitle}>
+        Theme
+      </Text>
       <SegmentedButtons
         value={themePreference}
         onValueChange={(value) => setThemePreference(value as typeof themePreference)}
@@ -75,18 +223,36 @@ export const SettingsScreen = () => {
       <Button mode="contained" onPress={() => {}} style={styles.saveButton} disabled>
         Settings Auto-Saved
       </Button>
-    </View>
+
+      <Button
+        mode="outlined"
+        icon="restart"
+        onPress={() => useUserStore.getState().resetOnboarding()}
+        style={{ marginTop: 16 }}
+      >
+        Re-run onboarding
+      </Button>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    paddingBottom: 32,
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 4,
+  },
+  aboutLink: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  modelsLink: {
+    marginBottom: 16,
   },
   input: {
     marginBottom: 5,
@@ -100,11 +266,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginBottom: 10,
+    marginTop: 4,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
   saveButton: {
     marginTop: 40,

@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Alert, Keyboard } from 'react-native';
 import { TextInput, Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { OllamaService } from '../services/ollama';
-import { useSettingsStore, useFeedStore } from '../store';
+import { LlmService } from '../services/llm';
+import { useSettingsStore, useFeedStore, useUserStore } from '../store';
 import { Post } from '../types';
+import { avatarUrl } from './onboarding/avatarUtils';
 
 export const ComposeScreen = () => {
   const navigation = useNavigation<any>();
   const settings = useSettingsStore();
   const theme = useTheme();
   const { addPost } = useFeedStore();
+  const profile = useUserStore((s) => s.profile);
 
   const [text, setText] = useState('');
   const [topic, setTopic] = useState('');
@@ -24,10 +26,11 @@ export const ComposeScreen = () => {
     setLoading(true);
     Keyboard.dismiss();
     try {
-      const generated = await OllamaService.generateDraft(settings, topic);
+      const generated = await LlmService.generateDraft(settings, topic);
       setText(generated);
     } catch (error) {
-      Alert.alert('Error', 'Failed to generate draft.');
+      const detail = error instanceof Error ? error.message : String(error);
+      Alert.alert('Failed to generate draft', detail);
     } finally {
       setLoading(false);
     }
@@ -40,9 +43,9 @@ export const ComposeScreen = () => {
       id: Date.now().toString(),
       author: {
         id: 'me',
-        name: 'Me',
-        handle: '@me',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/png?seed=me',
+        name: profile.name || 'Me',
+        handle: `@${profile.handle || 'me'}`,
+        avatar: avatarUrl(profile.avatarSeed || 'me', 128),
       },
       content: text,
       createdAt: new Date().toISOString(),

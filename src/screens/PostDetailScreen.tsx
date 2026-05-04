@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator, List, Avatar, Divider, useTheme } from 'react-native-paper';
 import { useRoute } from '@react-navigation/native';
 import { Post, Comment } from '../types';
 import { PostCard } from '../components/PostCard';
-import { OllamaService } from '../services/ollama';
+import { LlmService } from '../services/llm';
 import { useSettingsStore } from '../store';
 
 export const PostDetailScreen = () => {
@@ -28,10 +28,12 @@ export const PostDetailScreen = () => {
       setLoadingMore(true);
     }
     try {
-      const generated = await OllamaService.generateComments(settings, post.content, 3);
+      const generated = await LlmService.generateComments(settings, post.content, 3);
       setComments((prev) => (mode === 'append' ? [...prev, ...generated] : generated));
     } catch (error) {
       console.error(error);
+      const detail = error instanceof Error ? error.message : String(error);
+      Alert.alert('Failed to generate comments', detail);
     } finally {
       setLoading(false);
       setLoadingMore(false);
