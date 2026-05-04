@@ -3,7 +3,7 @@ import { View, FlatList, StyleSheet, Alert } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useFeedStore, useSettingsStore } from '../store';
-import { OllamaService } from '../services/ollama';
+import { LlmService } from '../services/llm';
 import { PostCard } from '../components/PostCard';
 import { Post } from '../types';
 
@@ -24,14 +24,15 @@ export const FeedScreen = () => {
     }
     try {
       setLoading(true);
-      const newPosts = await OllamaService.generateFeedPosts(settings, 5);
+      const newPosts = await LlmService.generateFeedPosts(settings, 5);
       if (mode === 'replace') {
         setPosts(newPosts);
         return;
       }
       appendPosts(newPosts);
     } catch (error) {
-      Alert.alert('Error', 'Failed to generate posts. Check your Ollama URL and Model in Settings.');
+      const detail = error instanceof Error ? error.message : String(error);
+      Alert.alert('Failed to generate', detail);
     } finally {
       setLoading(false);
       setRefreshing(false);

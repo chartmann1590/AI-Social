@@ -3,8 +3,10 @@
   "version": "1.1.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo run:android",
+    "start": "cross-env NODE_ENV=development expo start --dev-client",
+    "android": "cross-env NODE_ENV=development CI=true expo run:android",
+    "android:release": "cross-env NODE_ENV=production CI=true expo run:android --variant release",
+    "android:deploy": "cross-env NODE_ENV=production CI=true cmd /c \"cd android && gradlew.bat installRelease\"",
     "ios": "expo run:ios",
     "web": "expo start --web"
   },
@@ -15,6 +17,8 @@
     "@react-navigation/native-stack": "^7.9.0",
     "expo": "~54.0.30",
     "expo-constants": "^18.0.12",
+    "expo-dev-client": "~6.0.20",
+    "expo-file-system": "~19.0.21",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
     "react-native": "0.81.5",
@@ -25,6 +29,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "cross-env": "^10.1.0",
     "typescript": "~5.9.2"
   },
   "private": true

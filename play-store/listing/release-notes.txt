@@ -1,0 +1,6 @@
+Initial Play Store release.
+• On-device AI feed (MediaPipe LiteRT + Gemma 4 / Qwen 2.5 / DeepSeek R1).
+• Hybrid mode with optional Ollama fallback.
+• In-app model downloader with zip-integrity validation.
+• Guaranteed minimum-5-post feed generation.
+• Persists mode, fallback, model, and theme preferences.
