@@ -1,4 +1,7 @@
-# Release APK + App Bundle for Google Play, production AdMob (release builds use __DEV__ false).
+# Release APK + App Bundle for Google Play. Release builds use __DEV__ false (real ad SDK).
+#
+# If ADMOB_* secrets are missing, CI uses Google's sample app + units so the workflow still builds.
+# For production ads and Play upload signing, set the secrets below.
 #
 # gh secret set ADMOB_ANDROID_APP_ID -b"ca-app-pub-XXXX~YYYY"
 # gh secret set ADMOB_BANNER_AD_UNIT_ID -b"ca-app-pub-XXXX/ZZZZ"
@@ -41,38 +44,40 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Require GitHub secrets (fail fast)
+      - name: Resolve AdMob env (secrets or Google sample IDs for CI)
         env:
-          ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
-          ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
-          ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
-          ADMOB_NATIVE_AD_UNIT_ID: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
-          ADMOB_REWARDED_AD_UNIT_ID: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
-          ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
-          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
-          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
-          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+          SEC_APP: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+          SEC_BANNER: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          SEC_INT: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+          SEC_NATIVE: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
+          SEC_REWARD: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
+          SEC_DELAY: ${{ secrets.ADMOB_DELAY_APP_MEASUREMENT_INIT }}
+          SEC_OPT_INIT: ${{ secrets.ADMOB_OPTIMIZE_INITIALIZATION }}
+          SEC_OPT_LOAD: ${{ secrets.ADMOB_OPTIMIZE_AD_LOADING }}
+          SEC_IOS: ${{ secrets.ADMOB_IOS_APP_ID }}
         run: |
           set -euo pipefail
-          missing=0
-          for name in \
-            ADMOB_ANDROID_APP_ID \
-            ADMOB_BANNER_AD_UNIT_ID \
-            ADMOB_INTERSTITIAL_AD_UNIT_ID \
-            ADMOB_NATIVE_AD_UNIT_ID \
-            ADMOB_REWARDED_AD_UNIT_ID \
-            ANDROID_CI_KEYSTORE_BASE64 \
-            ANDROID_CI_KEYSTORE_PASSWORD \
-            ANDROID_CI_KEY_ALIAS \
-            ANDROID_CI_KEY_PASSWORD; do
-            if [ -z "${!name:-}" ]; then
-              echo "::error::Repository secret '$name' is empty or not set. Add it: gh secret set $name -b'...'"
-              missing=1
+          emit() {
+            local name="$1" secret="$2" fallback="$3"
+            if [ -n "$secret" ]; then
+              printf '%s=%s\n' "$name" "$secret" >> "$GITHUB_ENV"
+            else
+              printf '%s=%s\n' "$name" "$fallback" >> "$GITHUB_ENV"
             fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
+          }
+          # https://developers.google.com/admob/android/test-ads — sample app + units (no revenue)
+          emit ADMOB_ANDROID_APP_ID "$SEC_APP" "ca-app-pub-3940256099942544~3347511713"
+          emit ADMOB_BANNER_AD_UNIT_ID "$SEC_BANNER" "ca-app-pub-3940256099942544/6300978111"
+          emit ADMOB_INTERSTITIAL_AD_UNIT_ID "$SEC_INT" "ca-app-pub-3940256099942544/1033173712"
+          emit ADMOB_NATIVE_AD_UNIT_ID "$SEC_NATIVE" "ca-app-pub-3940256099942544/2247696110"
+          emit ADMOB_REWARDED_AD_UNIT_ID "$SEC_REWARD" "ca-app-pub-3940256099942544/5224354917"
+          if [ -z "$SEC_APP" ] || [ -z "$SEC_BANNER" ] || [ -z "$SEC_INT" ] || [ -z "$SEC_NATIVE" ] || [ -z "$SEC_REWARD" ]; then
+            echo "::warning::Missing one or more ADMOB_* secrets — using Google sample IDs. Set secrets for production ad units."
           fi
+          if [ -n "$SEC_DELAY" ]; then printf 'ADMOB_DELAY_APP_MEASUREMENT_INIT=%s\n' "$SEC_DELAY" >> "$GITHUB_ENV"; fi
+          if [ -n "$SEC_OPT_INIT" ]; then printf 'ADMOB_OPTIMIZE_INITIALIZATION=%s\n' "$SEC_OPT_INIT" >> "$GITHUB_ENV"; fi
+          if [ -n "$SEC_OPT_LOAD" ]; then printf 'ADMOB_OPTIMIZE_AD_LOADING=%s\n' "$SEC_OPT_LOAD" >> "$GITHUB_ENV"; fi
+          if [ -n "$SEC_IOS" ]; then printf 'ADMOB_IOS_APP_ID=%s\n' "$SEC_IOS" >> "$GITHUB_ENV"; fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -104,33 +109,29 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Decode upload keystore
+      - name: Decode upload keystore (optional — Play upload key)
         env:
           ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          # Strip line breaks (common if secret was pasted from a multi-line file or Windows certutil).
+          if [ -z "$ANDROID_CI_KEYSTORE_BASE64" ] || [ -z "$ANDROID_CI_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_CI_KEY_ALIAS" ] || [ -z "$ANDROID_CI_KEY_PASSWORD" ]; then
+            echo "::warning::Play upload keystore secrets not fully set — release will be signed with the debug keystore (CI OK; not for Play production)."
+            exit 0
+          fi
           RAW="${ANDROID_CI_KEYSTORE_BASE64//$'\r'/}"
           RAW="${RAW//$'\n'/}"
           printf '%s' "$RAW" | base64 -d > "$RUNNER_TEMP/upload.jks"
           if ! test -s "$RUNNER_TEMP/upload.jks"; then
-            echo "::error::Keystore decoded to an empty file. Regenerate ANDROID_CI_KEYSTORE_BASE64 (Linux/Git Bash: base64 -w0 upload.jks; PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes('upload.jks')) ) and set gh secret again."
+            echo "::error::Keystore secret set but decoded to empty file. Fix ANDROID_CI_KEYSTORE_BASE64 (single-line base64)."
             exit 1
           fi
           chmod 600 "$RUNNER_TEMP/upload.jks"
           echo "ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
 
       - name: Expo prebuild (Android)
-        env:
-          ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
-          ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
-          ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
-          ADMOB_NATIVE_AD_UNIT_ID: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
-          ADMOB_REWARDED_AD_UNIT_ID: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
-          ADMOB_DELAY_APP_MEASUREMENT_INIT: ${{ secrets.ADMOB_DELAY_APP_MEASUREMENT_INIT }}
-          ADMOB_OPTIMIZE_INITIALIZATION: ${{ secrets.ADMOB_OPTIMIZE_INITIALIZATION }}
-          ADMOB_OPTIMIZE_AD_LOADING: ${{ secrets.ADMOB_OPTIMIZE_AD_LOADING }}
-          ADMOB_IOS_APP_ID: ${{ secrets.ADMOB_IOS_APP_ID }}
         run: npx expo prebuild --platform android --no-install
 
       - name: Point Gradle at Android SDK
