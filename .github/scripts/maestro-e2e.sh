@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT="${GITHUB_WORKSPACE:-$(pwd)}"
 cd "$ROOT"
 
-APK="$ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
+APK="$ROOT/android/app/build/outputs/apk/release/app-release.apk"
 test -f "$APK"
 
 adb wait-for-device
