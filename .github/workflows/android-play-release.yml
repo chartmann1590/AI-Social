@@ -36,6 +36,39 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Require GitHub secrets (fail fast)
+        env:
+          ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+          ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+          ADMOB_NATIVE_AD_UNIT_ID: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
+          ADMOB_REWARDED_AD_UNIT_ID: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
+          ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in \
+            ADMOB_ANDROID_APP_ID \
+            ADMOB_BANNER_AD_UNIT_ID \
+            ADMOB_INTERSTITIAL_AD_UNIT_ID \
+            ADMOB_NATIVE_AD_UNIT_ID \
+            ADMOB_REWARDED_AD_UNIT_ID \
+            ANDROID_CI_KEYSTORE_BASE64 \
+            ANDROID_CI_KEYSTORE_PASSWORD \
+            ANDROID_CI_KEY_ALIAS \
+            ANDROID_CI_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Repository secret '$name' is empty or not set. Add it: gh secret set $name -b'...'"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -70,8 +103,15 @@ jobs:
         env:
           ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
         run: |
-          printf '%s' "$ANDROID_CI_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
-          test -s "$RUNNER_TEMP/upload.jks"
+          set -euo pipefail
+          # Strip line breaks (common if secret was pasted from a multi-line file or Windows certutil).
+          RAW="${ANDROID_CI_KEYSTORE_BASE64//$'\r'/}"
+          RAW="${RAW//$'\n'/}"
+          printf '%s' "$RAW" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          if ! test -s "$RUNNER_TEMP/upload.jks"; then
+            echo "::error::Keystore decoded to an empty file. Regenerate ANDROID_CI_KEYSTORE_BASE64 (Linux/Git Bash: base64 -w0 upload.jks; PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes('upload.jks')) ) and set gh secret again."
+            exit 1
+          fi
           chmod 600 "$RUNNER_TEMP/upload.jks"
           echo "ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
 
@@ -117,7 +157,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ci/play-store-version-code
           git status
-          git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "chore(ci): bump Play Store versionCode to ${{ steps.bump.outputs.version_code }}"
+          git commit -m "chore(ci): bump Play Store versionCode to ${{ steps.bump.outputs.version_code }}"
           git push origin "HEAD:${{ github.ref_name }}"
 
       - name: Create GitHub Release
