@@ -1,26 +1,11 @@
 # Release APK + App Bundle for Google Play. Release builds use __DEV__ false (real ad SDK).
 #
-# If ADMOB_* secrets are missing, CI uses Google's sample app + units so the workflow still builds.
-# For production ads and Play upload signing, set the secrets below.
-# Nothing in chat or in this file puts secrets on GitHub — run once (from AISocial/):
-#   gh auth login
-#   node scripts/push-admob-secrets-from-local-properties.mjs
-#
-# gh secret set ADMOB_ANDROID_APP_ID -b"ca-app-pub-XXXX~YYYY"
-# gh secret set ADMOB_BANNER_AD_UNIT_ID -b"ca-app-pub-XXXX/ZZZZ"
-# gh secret set ADMOB_INTERSTITIAL_AD_UNIT_ID -b"..."
-# gh secret set ADMOB_NATIVE_AD_UNIT_ID -b"..."
-# gh secret set ADMOB_REWARDED_AD_UNIT_ID -b"..."
-# gh secret set ANDROID_CI_KEYSTORE_BASE64 -b"$(base64 -w0 upload.jks)"
-# gh secret set ANDROID_CI_KEYSTORE_PASSWORD -b"..."
-# gh secret set ANDROID_CI_KEY_ALIAS -b"..."
-# gh secret set ANDROID_CI_KEY_PASSWORD -b"..."
-# Optional: ADMOB_DELAY_APP_MEASUREMENT_INIT, ADMOB_OPTIMIZE_INITIALIZATION, ADMOB_OPTIMIZE_AD_LOADING, ADMOB_IOS_APP_ID
+# AdMob IDs live in android/local.properties (single source of truth) — CI writes that file
+# from values below, overridable per repo by setting ADMOB_* GitHub Actions secrets.
+# Production keystore is stored in GitHub Actions secrets (see step "Decode upload keystore").
 
 name: Android Play release (APK + AAB)
 
-# Runs on every push to the default branches (and manual runs). The version-bump commit
-# includes [skip ci] so that push does not start another build (infinite loop).
 on:
   push:
     branches: [master, main]
@@ -47,41 +32,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve AdMob env (secrets or Google sample IDs for CI)
-        env:
-          SEC_APP: ${{ secrets.ADMOB_ANDROID_APP_ID }}
-          SEC_BANNER: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
-          SEC_INT: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
-          SEC_NATIVE: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
-          SEC_REWARD: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
-          SEC_DELAY: ${{ secrets.ADMOB_DELAY_APP_MEASUREMENT_INIT }}
-          SEC_OPT_INIT: ${{ secrets.ADMOB_OPTIMIZE_INITIALIZATION }}
-          SEC_OPT_LOAD: ${{ secrets.ADMOB_OPTIMIZE_AD_LOADING }}
-          SEC_IOS: ${{ secrets.ADMOB_IOS_APP_ID }}
-        run: |
-          set -euo pipefail
-          emit() {
-            local name="$1" secret="$2" fallback="$3"
-            if [ -n "$secret" ]; then
-              printf '%s=%s\n' "$name" "$secret" >> "$GITHUB_ENV"
-            else
-              printf '%s=%s\n' "$name" "$fallback" >> "$GITHUB_ENV"
-            fi
-          }
-          # https://developers.google.com/admob/android/test-ads — sample app + units (no revenue)
-          emit ADMOB_ANDROID_APP_ID "$SEC_APP" "ca-app-pub-3940256099942544~3347511713"
-          emit ADMOB_BANNER_AD_UNIT_ID "$SEC_BANNER" "ca-app-pub-3940256099942544/6300978111"
-          emit ADMOB_INTERSTITIAL_AD_UNIT_ID "$SEC_INT" "ca-app-pub-3940256099942544/1033173712"
-          emit ADMOB_NATIVE_AD_UNIT_ID "$SEC_NATIVE" "ca-app-pub-3940256099942544/2247696110"
-          emit ADMOB_REWARDED_AD_UNIT_ID "$SEC_REWARD" "ca-app-pub-3940256099942544/5224354917"
-          if [ -z "$SEC_APP" ] || [ -z "$SEC_BANNER" ] || [ -z "$SEC_INT" ] || [ -z "$SEC_NATIVE" ] || [ -z "$SEC_REWARD" ]; then
-            echo "::warning::Missing one or more ADMOB_* secrets — using Google sample IDs. Set secrets for production ad units."
-          fi
-          if [ -n "$SEC_DELAY" ]; then printf 'ADMOB_DELAY_APP_MEASUREMENT_INIT=%s\n' "$SEC_DELAY" >> "$GITHUB_ENV"; fi
-          if [ -n "$SEC_OPT_INIT" ]; then printf 'ADMOB_OPTIMIZE_INITIALIZATION=%s\n' "$SEC_OPT_INIT" >> "$GITHUB_ENV"; fi
-          if [ -n "$SEC_OPT_LOAD" ]; then printf 'ADMOB_OPTIMIZE_AD_LOADING=%s\n' "$SEC_OPT_LOAD" >> "$GITHUB_ENV"; fi
-          if [ -n "$SEC_IOS" ]; then printf 'ADMOB_IOS_APP_ID=%s\n' "$SEC_IOS" >> "$GITHUB_ENV"; fi
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -101,6 +51,7 @@ jobs:
       - name: Bump Play Store version code
         id: bump
         run: |
+          set -euo pipefail
           mkdir -p ci
           f=ci/play-store-version-code
           v=$(cat "$f" 2>/dev/null || echo 0)
@@ -120,7 +71,44 @@ jobs:
             echo "Created src/config.ts from config.example.ts for CI bundling."
           fi
 
-      - name: Decode upload keystore (optional — Play upload key)
+      - name: Write android/local.properties (AdMob source of truth, pre-prebuild)
+        env:
+          SEC_APP: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+          SEC_BANNER: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          SEC_INT: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+          SEC_NATIVE: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
+          SEC_REWARD: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p android
+          # Defaults are baked into the workflow so a fresh fork builds without setting any secrets.
+          # Override per-fork by setting ADMOB_* repository secrets.
+          ADMOB_APP_ID="${SEC_APP:-ca-app-pub-8382831211800454~6304256334}"
+          ADMOB_BANNER="${SEC_BANNER:-ca-app-pub-8382831211800454/9896940421}"
+          ADMOB_INT="${SEC_INT:-ca-app-pub-8382831211800454/9056518545}"
+          ADMOB_NATIVE="${SEC_NATIVE:-ca-app-pub-8382831211800454/5434951231}"
+          ADMOB_REWARD="${SEC_REWARD:-ca-app-pub-8382831211800454/7049302304}"
+          {
+            echo "admob.android_app_id=${ADMOB_APP_ID}"
+            echo "admob.banner_ad_unit_id=${ADMOB_BANNER}"
+            echo "admob.interstitial_ad_unit_id=${ADMOB_INT}"
+            echo "admob.native_ad_unit_id=${ADMOB_NATIVE}"
+            echo "admob.rewarded_ad_unit_id=${ADMOB_REWARD}"
+            echo "admob.delay_app_measurement_init=false"
+            echo "admob.optimize_initialization=true"
+            echo "admob.optimize_ad_loading=true"
+          } > android/local.properties
+          # Persist the values so the post-prebuild step can rewrite them if prebuild touches the file.
+          {
+            echo "ADMOB_APP_ID=${ADMOB_APP_ID}"
+            echo "ADMOB_BANNER=${ADMOB_BANNER}"
+            echo "ADMOB_INT=${ADMOB_INT}"
+            echo "ADMOB_NATIVE=${ADMOB_NATIVE}"
+            echo "ADMOB_REWARD=${ADMOB_REWARD}"
+          } >> "$GITHUB_ENV"
+          echo "Wrote android/local.properties (AdMob); sdk.dir is appended after prebuild."
+
+      - name: Decode upload keystore (Play upload signing)
         env:
           ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
           ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
@@ -128,28 +116,46 @@ jobs:
           ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [ -z "$ANDROID_CI_KEYSTORE_BASE64" ] || [ -z "$ANDROID_CI_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_CI_KEY_ALIAS" ] || [ -z "$ANDROID_CI_KEY_PASSWORD" ]; then
+          if [ -z "${ANDROID_CI_KEYSTORE_BASE64:-}" ] \
+             || [ -z "${ANDROID_CI_KEYSTORE_PASSWORD:-}" ] \
+             || [ -z "${ANDROID_CI_KEY_ALIAS:-}" ] \
+             || [ -z "${ANDROID_CI_KEY_PASSWORD:-}" ]; then
             echo "::warning::Play upload keystore secrets not fully set — release will be signed with the debug keystore (CI OK; not for Play production)."
             exit 0
           fi
-          RAW="${ANDROID_CI_KEYSTORE_BASE64//$'\r'/}"
-          RAW="${RAW//$'\n'/}"
-          printf '%s' "$RAW" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          # Strip every whitespace char so any encoding accident (CR/LF/space/tab) survives.
+          printf '%s' "$ANDROID_CI_KEYSTORE_BASE64" | tr -d ' \t\r\n' | base64 -d --ignore-garbage > "$RUNNER_TEMP/upload.jks"
           if ! test -s "$RUNNER_TEMP/upload.jks"; then
-            echo "::error::Keystore secret set but decoded to empty file. Fix ANDROID_CI_KEYSTORE_BASE64 (single-line base64)."
+            echo "::error::Keystore secret decoded to empty file. Re-set ANDROID_CI_KEYSTORE_BASE64 (single-line base64 of upload.jks)."
             exit 1
           fi
           chmod 600 "$RUNNER_TEMP/upload.jks"
+          keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$ANDROID_CI_KEYSTORE_PASSWORD" -alias "$ANDROID_CI_KEY_ALIAS" >/dev/null \
+            || { echo "::error::Keystore loaded but alias/password mismatch (alias=$ANDROID_CI_KEY_ALIAS)."; exit 1; }
           echo "ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          echo "Keystore verified."
 
       - name: Expo prebuild (Android)
         run: npx expo prebuild --platform android --no-install
 
-      - name: Point Gradle at Android SDK
+      - name: Finalize android/local.properties (AdMob + sdk.dir)
         run: |
+          set -euo pipefail
           sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           test -n "$sdk"
-          printf 'sdk.dir=%s\n' "$sdk" > android/local.properties
+          {
+            echo "admob.android_app_id=${ADMOB_APP_ID}"
+            echo "admob.banner_ad_unit_id=${ADMOB_BANNER}"
+            echo "admob.interstitial_ad_unit_id=${ADMOB_INT}"
+            echo "admob.native_ad_unit_id=${ADMOB_NATIVE}"
+            echo "admob.rewarded_ad_unit_id=${ADMOB_REWARD}"
+            echo "admob.delay_app_measurement_init=false"
+            echo "admob.optimize_initialization=true"
+            echo "admob.optimize_ad_loading=true"
+            echo "sdk.dir=${sdk}"
+          } > android/local.properties
+          echo "android/local.properties (ad unit IDs masked):"
+          sed -E 's#(=ca-app-pub-[^/~]+[/~])(.{4}).*#\1\2***#' android/local.properties
 
       - name: Gradle release APK and bundle
         working-directory: android
@@ -161,19 +167,29 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease bundleRelease --stacktrace
 
-      - name: Verify outputs
+      - name: Verify outputs and signing
         run: |
-          test -f android/app/build/outputs/bundle/release/app-release.aab
-          test -f android/app/build/outputs/apk/release/app-release.apk
+          set -euo pipefail
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$AAB"
+          test -f "$APK"
           ls -la android/app/build/outputs/bundle/release/
           ls -la android/app/build/outputs/apk/release/
+          BUILD_TOOLS=$(ls -1 "$ANDROID_SDK_ROOT/build-tools/" | sort -V | tail -1)
+          APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
+          "$APKSIGNER" verify --print-certs "$APK" | head -20
 
       - name: Commit version code bump
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ci/play-store-version-code
-          git status
+          if git diff --cached --quiet; then
+            echo "No version-code change to commit."
+            exit 0
+          fi
           git commit -m "chore(ci): bump Play Store versionCode to ${{ steps.bump.outputs.version_code }} [skip ci]"
           git push origin "HEAD:${{ github.ref_name }}"
 
