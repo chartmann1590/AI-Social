@@ -1,0 +1,136 @@
+# Release APK + App Bundle for Google Play, production AdMob (release builds use __DEV__ false).
+#
+# gh secret set ADMOB_ANDROID_APP_ID -b"ca-app-pub-XXXX~YYYY"
+# gh secret set ADMOB_BANNER_AD_UNIT_ID -b"ca-app-pub-XXXX/ZZZZ"
+# gh secret set ADMOB_INTERSTITIAL_AD_UNIT_ID -b"..."
+# gh secret set ADMOB_NATIVE_AD_UNIT_ID -b"..."
+# gh secret set ADMOB_REWARDED_AD_UNIT_ID -b"..."
+# gh secret set ANDROID_CI_KEYSTORE_BASE64 -b"$(base64 -w0 upload.jks)"
+# gh secret set ANDROID_CI_KEYSTORE_PASSWORD -b"..."
+# gh secret set ANDROID_CI_KEY_ALIAS -b"..."
+# gh secret set ANDROID_CI_KEY_PASSWORD -b"..."
+# Optional: ADMOB_DELAY_APP_MEASUREMENT_INIT, ADMOB_OPTIMIZE_INITIALIZATION, ADMOB_OPTIMIZE_AD_LOADING, ADMOB_IOS_APP_ID
+
+name: Android Play release (APK + AAB)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: android-play-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Bump Play Store version code
+        id: bump
+        run: |
+          mkdir -p ci
+          f=ci/play-store-version-code
+          v=$(cat "$f" 2>/dev/null || echo 0)
+          v=$((v + 1))
+          echo "$v" > "$f"
+          echo "version_code=$v" >> "$GITHUB_OUTPUT"
+          echo "Bumped versionCode to $v"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Decode upload keystore
+        env:
+          ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_CI_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          test -s "$RUNNER_TEMP/upload.jks"
+          chmod 600 "$RUNNER_TEMP/upload.jks"
+          echo "ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+
+      - name: Expo prebuild (Android)
+        env:
+          ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+          ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+          ADMOB_NATIVE_AD_UNIT_ID: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
+          ADMOB_REWARDED_AD_UNIT_ID: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
+          ADMOB_DELAY_APP_MEASUREMENT_INIT: ${{ secrets.ADMOB_DELAY_APP_MEASUREMENT_INIT }}
+          ADMOB_OPTIMIZE_INITIALIZATION: ${{ secrets.ADMOB_OPTIMIZE_INITIALIZATION }}
+          ADMOB_OPTIMIZE_AD_LOADING: ${{ secrets.ADMOB_OPTIMIZE_AD_LOADING }}
+          ADMOB_IOS_APP_ID: ${{ secrets.ADMOB_IOS_APP_ID }}
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Point Gradle at Android SDK
+        run: |
+          sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          test -n "$sdk"
+          printf 'sdk.dir=%s\n' "$sdk" > android/local.properties
+
+      - name: Gradle release APK and bundle
+        working-directory: android
+        env:
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease bundleRelease --stacktrace
+
+      - name: Verify outputs
+        run: |
+          test -f android/app/build/outputs/bundle/release/app-release.aab
+          test -f android/app/build/outputs/apk/release/app-release.apk
+          ls -la android/app/build/outputs/bundle/release/
+          ls -la android/app/build/outputs/apk/release/
+
+      - name: Commit version code bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ci/play-store-version-code
+          git status
+          git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "chore(ci): bump Play Store versionCode to ${{ steps.bump.outputs.version_code }}"
+          git push origin "HEAD:${{ github.ref_name }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-play-v${{ steps.bump.outputs.version_code }}
+          name: Android Play v${{ steps.bump.outputs.version_code }}
+          body: |
+            Production AdMob release build (versionCode ${{ steps.bump.outputs.version_code }}).
+
+            Attachments: app-release.aab for Play Console, app-release.apk for sideload or QA.
+          files: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/apk/release/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
