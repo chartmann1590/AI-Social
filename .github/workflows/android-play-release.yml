@@ -143,6 +143,20 @@ jobs:
       - name: Expo prebuild (Android)
         run: npx expo prebuild --platform android --no-install
 
+      - name: Embed JS bundle in debug APK (no Metro on CI)
+        # The RN gradle plugin's `react {}` block defaults `debuggableVariants` to ["debug"],
+        # which skips JS bundling for debug builds (they expect a running Metro dev server).
+        # CI has no Metro, so the launched app would be a blank/error screen and Maestro
+        # would never see the Welcome content. Force debug to bundle JS like release does.
+        run: |
+          set -euo pipefail
+          f=android/app/build.gradle
+          if ! grep -q 'debuggableVariants = \[\]' "$f"; then
+            sed -i '/bundleCommand = "export:embed"/a\    debuggableVariants = []' "$f"
+          fi
+          echo "Confirmed debuggableVariants line:"
+          grep -n 'debuggableVariants' "$f"
+
       - name: Write android/local.properties (AdMob + sdk.dir)
         run: |
           set -euo pipefail

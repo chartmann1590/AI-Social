@@ -3,7 +3,12 @@
 # Invoked from the action's script: as a single line so variable scope persists.
 set -euo pipefail
 
-APK=android/app/build/outputs/apk/debug/app-debug.apk
+# Anchor every path to the workflow checkout root so artifact upload (which resolves
+# `path:` against $GITHUB_WORKSPACE) can find the debug output afterwards.
+ROOT="${GITHUB_WORKSPACE:-$(pwd)}"
+cd "$ROOT"
+
+APK="$ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
 test -f "$APK"
 
 adb wait-for-device
@@ -14,5 +19,19 @@ curl -Ls "https://get.maestro.mobile.dev" | bash
 export PATH="$HOME/.maestro/bin:$PATH"
 maestro --version
 
-mkdir -p maestro-output
-maestro test --debug-output maestro-output .maestro/smoke.yaml
+OUT="$ROOT/maestro-output"
+mkdir -p "$OUT"
+
+# Always capture a screenshot and UI hierarchy dump after launch so we have artifacts
+# even if maestro itself bails before writing its debug bundle.
+trap '
+  set +e
+  echo "Capturing post-failure diagnostics into $OUT"
+  adb shell screencap -p /sdcard/maestro-fail.png
+  adb pull /sdcard/maestro-fail.png "$OUT/maestro-fail.png" || true
+  adb shell uiautomator dump /sdcard/window_dump.xml >/dev/null 2>&1 || true
+  adb pull /sdcard/window_dump.xml "$OUT/window_dump.xml" || true
+  adb logcat -d > "$OUT/logcat.txt" || true
+' EXIT
+
+maestro test --debug-output "$OUT" .maestro/smoke.yaml
