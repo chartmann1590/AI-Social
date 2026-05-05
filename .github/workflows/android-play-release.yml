@@ -207,8 +207,9 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
+          # NOTE: action runs this under /bin/sh (dash), so no `set -o pipefail`.
           script: |
-            set -euo pipefail
+            set -eu
             adb wait-for-device
             adb shell input keyevent 82 || true
             APK=android/app/build/outputs/apk/debug/app-debug.apk
