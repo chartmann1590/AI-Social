@@ -2,6 +2,9 @@
 #
 # If ADMOB_* secrets are missing, CI uses Google's sample app + units so the workflow still builds.
 # For production ads and Play upload signing, set the secrets below.
+# Nothing in chat or in this file puts secrets on GitHub — run once (from AISocial/):
+#   gh auth login
+#   node scripts/push-admob-secrets-from-local-properties.mjs
 #
 # gh secret set ADMOB_ANDROID_APP_ID -b"ca-app-pub-XXXX~YYYY"
 # gh secret set ADMOB_BANNER_AD_UNIT_ID -b"ca-app-pub-XXXX/ZZZZ"
