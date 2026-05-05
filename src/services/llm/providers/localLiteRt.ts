@@ -116,12 +116,16 @@ async function generateJsonText(settings: AppSettings, userPrompt: string): Prom
 export const localLiteRtProvider: LlmProvider = {
   id: 'local',
 
-  async generateFeedPosts(settings: AppSettings, count: number = 5): Promise<Post[]> {
+  async generateFeedPosts(
+    settings: AppSettings,
+    count: number = 5,
+    baseTime?: number,
+  ): Promise<Post[]> {
     const userPrompt = buildFeedPostsPrompt(count);
     const text = await generateJsonText(settings, userPrompt);
     const parsed = parseModelJson(text);
     const rawPosts = ensureArray(parsed, 'posts');
-    return mapRawPostsToPosts(rawPosts);
+    return mapRawPostsToPosts(rawPosts, baseTime ?? Date.now());
   },
 
   async generateComments(

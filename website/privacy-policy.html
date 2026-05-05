@@ -6,7 +6,7 @@
     <title>Privacy Policy - AI Social</title>
     <meta
       name="description"
-      content="Privacy policy for the AI Social mobile application and this marketing site: data collection, third parties, storage, and your rights."
+      content="Privacy policy for the AI Social mobile application and this marketing site: ads, data collection, third parties, storage, and your rights."
     />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#03050a" />
@@ -15,7 +15,7 @@
     <meta property="og:title" content="Privacy Policy - AI Social" />
     <meta
       property="og:description"
-      content="How AI Social handles data: no account system, optional Ollama and Hugging Face endpoints, local settings storage."
+      content="How AI Social handles data: AdMob ads, no account system, optional Ollama and Hugging Face endpoints, local settings storage."
     />
     <meta property="og:url" content="https://chartmann1590.github.io/AI-Social/privacy-policy.html" />
     <meta property="og:site_name" content="AI Social" />
@@ -40,7 +40,7 @@
         "url": "https://chartmann1590.github.io/AI-Social/privacy-policy.html",
         "name": "Privacy Policy - AI Social",
         "inLanguage": "en-US",
-        "dateModified": "2026-05-03"
+        "dateModified": "2026-05-04"
       }
     </script>
   </head>
@@ -62,7 +62,7 @@
     </header>
     <main id="main" class="legal">
       <h1>Privacy Policy</h1>
-      <p class="meta">Last updated: May 3, 2026. Applies to the AI Social application and this website.</p>
+      <p class="meta">Last updated: May 4, 2026. Applies to the AI Social application and this website.</p>
       <p>
         This policy describes how the <strong>AI Social</strong> mobile application (the App) and the promotional
         website hosted on GitHub Pages (the Site) handle information. AI Social is an open-source project; the canonical
@@ -72,6 +72,7 @@
       <h2>Summary</h2>
       <ul>
         <li>The App does <strong>not</strong> operate a first-party account system and does <strong>not</strong> collect analytics or crash reporting on behalf of the project maintainer.</li>
+        <li>The App displays ads through <strong>Google AdMob</strong>. The Google Mobile Ads SDK may collect and share device, interaction, diagnostic, IP address, and advertising identifier data for ads, analytics, and fraud prevention.</li>
         <li>When you use <strong>remote</strong> or <strong>hybrid</strong> mode and supply an Ollama server URL, prompts for generation are sent to <strong>that server only</strong>, under your control.</li>
         <li>When you use <strong>on-device</strong> mode on a supported Android build, inference runs locally; prompts are not sent to the maintainer infrastructure.</li>
         <li>The Site is static HTML served by GitHub; normal GitHub and browser telemetry may apply as described in GitHub documentation.</li>
@@ -97,13 +98,36 @@
       </p>
       <h2>Data collection (App)</h2>
       <p>
-        Per the project Play Console data safety disclosure: <strong>AI Social does not collect or transmit personal
-        data or analytics from the device to the project maintainer.</strong> There is no sign-in, no user identifier
-        assigned by the App, and no central AI Social backend.
+        AI Social does not collect or transmit personal data or analytics from the device to a project-operated backend.
+        There is no sign-in, no user identifier assigned by the App itself, and no central AI Social server. The App does
+        include the Google Mobile Ads SDK for AdMob advertising, and that SDK may collect and share data as described in
+        the advertising section below.
+      </p>
+      <h2>Advertising</h2>
+      <p>
+        The App uses Google AdMob to show banner, interstitial, native, and rewarded ads. Ads are requested as
+        non-personalized ads in the current App build, but Google may still process information needed for ad delivery,
+        frequency capping, aggregated reporting, analytics, and fraud prevention.
+      </p>
+      <p>
+        According to Google's Google Mobile Ads SDK disclosures, the SDK may automatically collect and share IP address
+        (which can estimate general location), app interactions such as app launches, taps, and ad video views,
+        diagnostic information, and device or account identifiers including the Android advertising ID and app set ID.
+        Google states that this data is encrypted in transit. You can reset or delete your Android advertising ID in
+        Android system settings under Privacy &gt; Ads.
+      </p>
+      <p>
+        Users in regions where consent is required may see a Google consent message before ads are requested. AdMob and
+        participating ad technology providers process advertising data under their own policies, including the
+        <a href="https://policies.google.com/technologies/ads">Google Advertising Policy</a>.
       </p>
       <h2>Third parties and network destinations</h2>
       <p>Depending on features you use, the App may contact:</p>
       <ul>
+        <li>
+          <strong>Google AdMob / Google Mobile Ads SDK</strong> - to load and measure ads, including banner,
+          interstitial, native, and rewarded ad formats.
+        </li>
         <li>
           <strong>Hugging Face</strong> (huggingface.co and related CDN hosts such as cas-bridge.xethub.hf.co) - only when
           you explicitly start a model download from the Models screen.
@@ -124,9 +148,10 @@
       </ul>
       <h2>Permissions (Android)</h2>
       <p>
-        The App requests <strong>INTERNET</strong> for optional model downloads and optional Ollama access. It does not
-        require camera, contacts, location, microphone, or broad storage permissions for its core functionality as
-        documented in the repository.
+        The App requests <strong>INTERNET</strong> for AdMob ads, optional model downloads, and optional Ollama access.
+        The Google Mobile Ads SDK may also use the Android advertising ID where available. The App does not require
+        camera, contacts, location, microphone, or broad storage permissions for its core functionality as documented in
+        the repository.
       </p>
       <h2>This website (GitHub Pages)</h2>
       <p>

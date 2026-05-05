@@ -220,8 +220,20 @@ function realisticComments(likes: number): number {
   return Math.max(0, Math.min(999, raw));
 }
 
-export function mapRawPostsToPosts(rawPosts: unknown[]): Post[] {
-  return rawPosts.map((p: unknown) => {
+/** Index 0 = newest in batch (near `baseTime`), later items progressively older. */
+function staggeredCreatedAtMs(baseTime: number, index: number): number {
+  const minStepMs = 2 * 60 * 1000;
+  const maxStepMs = 12 * 60 * 1000;
+  let offset = 0;
+  for (let j = 0; j < index; j++) {
+    offset += randomInt(minStepMs, maxStepMs);
+  }
+  offset += randomInt(0, 90_000);
+  return baseTime - offset;
+}
+
+export function mapRawPostsToPosts(rawPosts: unknown[], baseTime: number = Date.now()): Post[] {
+  return rawPosts.map((p: unknown, index: number) => {
     const row = p as Record<string, unknown>;
     const handleRaw = String(row.authorHandle ?? '').replace(/^@+/, '');
     const likes = realisticLikes();
@@ -234,15 +246,18 @@ export function mapRawPostsToPosts(rawPosts: unknown[]): Post[] {
         avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(handleRaw || 'user')}`,
       },
       content: String(row.content ?? ''),
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(staggeredCreatedAtMs(baseTime, index)).toISOString(),
       likes,
       commentsCount: realisticComments(likes),
     };
   });
 }
 
-export function mapRawCommentsToComments(rawComments: unknown[]): Comment[] {
-  return rawComments.map((c: unknown) => {
+export function mapRawCommentsToComments(
+  rawComments: unknown[],
+  baseTime: number = Date.now(),
+): Comment[] {
+  return rawComments.map((c: unknown, index: number) => {
     const row = c as Record<string, unknown>;
     const handleRaw = String(row.authorHandle ?? '');
     return {
@@ -254,7 +269,7 @@ export function mapRawCommentsToComments(rawComments: unknown[]): Comment[] {
         avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(handleRaw || 'user')}`,
       },
       content: String(row.content ?? ''),
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(staggeredCreatedAtMs(baseTime, index)).toISOString(),
     };
   });
 }

@@ -84,8 +84,16 @@ If `MainApplication` no longer matches the plugin’s regex after an Expo upgrad
 
 ## App Settings
 - **LLM mode** / **Remote fallback** / **Local model path** / token & temperature overrides.
+- **Local image model path** for SD checkpoints (download via Models tab, then set/verify path).
+- **Pixabay API key** for free image/video search and import in Profile → Media.
 - Theme: System, Light, or Dark.
 - Streaming: toggle "Use Streaming" for experimental streaming behavior (remote path).
+
+## Profile tabs
+- **Replies** now shows your own replies pulled from persisted post comments.
+- **Media** is an Instagram-style 3-column grid of media attached to your posts.
+- In **Profile → Media**, search Pixabay and import free images/videos into your profile posts.
+- In **Compose**, generate an AI image prompt (current runtime uses cloud render; local SD path is persisted for native SD runtime integration).
 
 ## Run Locally
 - Start the dev server: `npm run start`
@@ -94,6 +102,31 @@ If `MainApplication` no longer matches the plugin’s regex after an Expo upgrad
 - iOS simulator (macOS only): `npm run ios`
 - Web: `npm run web`
 - If Metro acts up: `npx expo start -c`
+
+## Pixel 8 Pro standalone deployment (no Metro)
+Use this when you want a release app that runs with Metro fully stopped.
+
+1. Connect Pixel 8 Pro over USB and verify:
+   ```powershell
+   adb devices
+   ```
+2. Generate Android native project (if needed):
+   ```powershell
+   npx expo prebuild --platform android
+   ```
+3. Build release APK with embedded JS bundle:
+   ```powershell
+   npm run android:release
+   ```
+4. Install release on the connected phone:
+   ```powershell
+   npm run android:deploy
+   ```
+5. Ensure Metro is not running, then launch the app from launcher icon.
+6. Optional quick launch from adb:
+   ```powershell
+   adb shell monkey -p com.anonymous.AISocial 1
+   ```
 
 ## Device Testing (Development Build)
 - Android (USB): enable USB debugging, plug in your device, then run `npm run android`.

@@ -24,11 +24,13 @@ const FAMILY_LABEL: Record<OnDeviceModelFamily, string> = {
   gemma3: 'Gemma 3',
   qwen: 'Qwen',
   'deepseek-r1': 'DeepSeek R1',
+  sd15: 'Stable Diffusion',
 };
 
 export const ModelsScreen = () => {
   const theme = useTheme();
   const setLocalModelPath = useSettingsStore((s) => s.setLocalModelPath);
+  const setLocalImageModelPath = useSettingsStore((s) => s.setLocalImageModelPath);
   const setLlmMode = useSettingsStore((s) => s.setLlmMode);
 
   const [filter, setFilter] = useState<OnDeviceModelFamily | 'all'>('all');
@@ -93,6 +95,11 @@ export const ModelsScreen = () => {
       return;
     }
     resetLocalLlmInitCache();
+    if (entry.family === 'sd15') {
+      setLocalImageModelPath(uriToNativePath(uri));
+      Alert.alert('Image model active', 'Stable Diffusion model path has been saved.');
+      return;
+    }
     setLocalModelPath(uriToNativePath(uri));
     setLlmMode('local');
     Alert.alert(
@@ -168,7 +175,7 @@ export const ModelsScreen = () => {
               {entry.filename}
             </Text>
           </Card.Content>
-          <Card.Actions>
+          <Card.Actions style={styles.cardActions}>
             <Button onPress={() => openCard(entry)}>HF page</Button>
             <Button
               mode="contained-tonal"
@@ -201,6 +208,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   chip: { marginRight: 4, marginBottom: 4 },
   card: { marginBottom: 12 },
+  cardActions: { flexWrap: 'wrap', rowGap: 4 },
   progress: { marginVertical: 8, height: 8 },
   filename: { marginTop: 8, opacity: 0.8 },
   divider: { marginVertical: 20 },
