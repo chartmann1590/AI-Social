@@ -185,19 +185,6 @@ jobs:
           APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
           "$APKSIGNER" verify --print-certs "$APK" | head -20
 
-      - name: Commit version code bump
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ci/play-store-version-code
-          if git diff --cached --quiet; then
-            echo "No version-code change to commit."
-            exit 0
-          fi
-          git commit -m "chore(ci): bump Play Store versionCode to ${{ steps.bump.outputs.version_code }} [skip ci]"
-          git push origin "HEAD:${{ github.ref_name }}"
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -212,3 +199,25 @@ jobs:
             android/app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit version code bump (best-effort, retries on concurrent push)
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ci/play-store-version-code
+          if git diff --cached --quiet; then
+            echo "No version-code change to commit."
+            exit 0
+          fi
+          git commit -m "chore(ci): bump Play Store versionCode to ${{ steps.bump.outputs.version_code }} [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            if git push origin "HEAD:${{ github.ref_name }}"; then
+              echo "Pushed version bump on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — rebasing onto fresh origin/${{ github.ref_name }} and retrying."
+            git fetch origin "${{ github.ref_name }}"
+            git rebase "origin/${{ github.ref_name }}" || { git rebase --abort; sleep $((attempt * 2)); }
+          done
+          echo "::warning::Failed to push version-code bump after 5 attempts (release artifacts are already published)."
