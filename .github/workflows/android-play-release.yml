@@ -162,6 +162,72 @@ jobs:
           echo "android/local.properties (ad unit IDs masked):"
           sed -E 's#(=ca-app-pub-[^/~]+[/~])(.{4}).*#\1\2***#' android/local.properties
 
+      - name: Build debug APK for e2e
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Enable KVM (emulator hardware acceleration)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-android-33-google_apis-x86_64-v1
+
+      - name: Pre-create AVD snapshot (cache miss only)
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: echo "AVD created and cached."
+
+      - name: e2e smoke test (Maestro on Android emulator)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            adb wait-for-device
+            adb shell input keyevent 82 || true
+            APK=android/app/build/outputs/apk/debug/app-debug.apk
+            test -f "$APK"
+            adb install -r -t "$APK"
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+            export PATH="$HOME/.maestro/bin:$PATH"
+            maestro --version
+            mkdir -p maestro-output
+            maestro test --debug-output maestro-output .maestro/smoke.yaml
+
+      - name: Upload Maestro debug output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-debug-output
+          path: maestro-output
+          if-no-files-found: ignore
+
       - name: Gradle release APK and bundle
         working-directory: android
         env:
@@ -169,7 +235,6 @@ jobs:
           ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
           ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
         run: |
-          chmod +x gradlew
           ./gradlew assembleRelease bundleRelease --stacktrace
 
       - name: Verify outputs and signing

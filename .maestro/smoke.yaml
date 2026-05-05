@@ -1,0 +1,6 @@
+appId: com.anonymous.AISocial
+---
+- launchApp:
+    clearState: true
+- assertVisible: "AI Social"
+- assertVisible: "Let's go"
