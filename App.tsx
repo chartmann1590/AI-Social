@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
-import { useColorScheme } from 'react-native';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, adaptNavigationTheme } from 'react-native-paper';
 import { DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationDefaultTheme } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation';
 import { useSettingsStore } from './src/store';
+import { AdMobBanner } from './src/ads/AdMobBanner';
+import { AdMobProvider } from './src/ads/AdMobProvider';
 
 export default function App() {
   const colorScheme = useColorScheme();
@@ -30,9 +32,20 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <PaperProvider theme={paperTheme}>
-        <AppNavigator navigationTheme={navigationTheme} />
-        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <AdMobProvider>
+          <View style={styles.root}>
+            <AppNavigator navigationTheme={navigationTheme} />
+            <AdMobBanner />
+            <StatusBar style={isDark ? 'light' : 'dark'} />
+          </View>
+        </AdMobProvider>
       </PaperProvider>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});

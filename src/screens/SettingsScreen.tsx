@@ -28,8 +28,10 @@ export const SettingsScreen = () => {
     llmMode,
     enableRemoteFallback,
     localModelPath,
+    localImageModelPath,
     localMaxTokens,
     localTemperature,
+    pixabayApiKey,
     setBaseUrl,
     setModel,
     setUseStreaming,
@@ -37,8 +39,10 @@ export const SettingsScreen = () => {
     setLlmMode,
     setEnableRemoteFallback,
     setLocalModelPath,
+    setLocalImageModelPath,
     setLocalMaxTokens,
     setLocalTemperature,
+    setPixabayApiKey,
   } = useSettingsStore();
 
   const [localReady, setLocalReady] = useState<boolean | null>(null);
@@ -93,7 +97,11 @@ export const SettingsScreen = () => {
       </Button>
 
       <Button mode="contained-tonal" icon="download" onPress={() => navigation.navigate('Models')} style={styles.modelsLink}>
-        Download Gemma 4, Gemma 3, Qwen, DeepSeek R1 (.task)
+        Download models (Gemma, Qwen, DeepSeek, SD v1.5)
+      </Button>
+
+      <Button mode="contained-tonal" icon="gift-outline" onPress={() => navigation.navigate('Rewards')} style={styles.modelsLink}>
+        Rewards and ad-free time
       </Button>
 
       <Text variant="titleSmall" style={styles.sectionTitle}>
@@ -165,6 +173,32 @@ export const SettingsScreen = () => {
         mode="outlined"
         style={[styles.input, { backgroundColor: theme.colors.surface }]}
       />
+      <TextInput
+        label="Local image model absolute path"
+        value={localImageModelPath}
+        onChangeText={setLocalImageModelPath}
+        mode="outlined"
+        placeholder="/data/user/0/.../v1-5-pruned-emaonly.safetensors"
+        style={[styles.input, { backgroundColor: theme.colors.surface }]}
+      />
+
+      <Divider style={styles.divider} />
+
+      <Text variant="titleSmall" style={styles.sectionTitle}>
+        Media search
+      </Text>
+      <TextInput
+        label="Pixabay API key"
+        value={pixabayApiKey}
+        onChangeText={setPixabayApiKey}
+        mode="outlined"
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={[styles.input, { backgroundColor: theme.colors.surface }]}
+      />
+      <Text variant="bodySmall" style={[styles.helper, { color: theme.colors.onSurfaceVariant }]}>
+        Create a free key at pixabay.com/api/docs and paste it here for Media tab search.
+      </Text>
 
       <Divider style={styles.divider} />
 

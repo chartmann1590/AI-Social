@@ -125,7 +125,9 @@ export async function assertLooksLikeMediapipeTaskFile(
 
   if (size >= 500_000) {
     // `.litertlm` bundles are LiteRT-LM's own native container (not a zip); skip format validation.
+    // `.safetensors` is used by SD checkpoints and is also non-zip binary.
     const isLiteRtLmByExt = /\.litertlm$/i.test(fileUri);
+    const isSafeTensorsByExt = /\.safetensors$/i.test(fileUri);
     const b64 = await FileSystem.readAsStringAsync(fileUri, {
       encoding: FileSystem.EncodingType.Base64,
       position: 0,
@@ -134,9 +136,9 @@ export async function assertLooksLikeMediapipeTaskFile(
     const prefix = base64FirstBytesToUint8(b64, 96);
     const isZipTask = looksLikeZipTaskPrefix(prefix);
 
-    if (!isZipTask && !isLiteRtLmByExt) {
+    if (!isZipTask && !isLiteRtLmByExt && !isSafeTensorsByExt) {
       throw new Error(
-        'This file is not a recognized MediaPipe `.task` bundle or LiteRT-LM `.litertlm` model. Delete it in Models and re-download.',
+        'This file is not a recognized MediaPipe `.task`, LiteRT-LM `.litertlm`, or `.safetensors` model. Delete it in Models and re-download.',
       );
     }
 

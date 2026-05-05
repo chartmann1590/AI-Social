@@ -43,7 +43,11 @@ async function readOllamaErrorDetail(response: Response): Promise<string> {
 export const remoteOllamaProvider: LlmProvider = {
   id: 'remote',
 
-  async generateFeedPosts(settings: AppSettings, count: number = 5): Promise<Post[]> {
+  async generateFeedPosts(
+    settings: AppSettings,
+    count: number = 5,
+    baseTime?: number,
+  ): Promise<Post[]> {
     ensureOllamaConfigured(settings);
     const prompt = buildFeedPostsPrompt(count);
     const url = `${getBaseUrl(settings.baseUrl)}/api/generate`;
@@ -76,7 +80,7 @@ export const remoteOllamaProvider: LlmProvider = {
     const data = await response.json();
     const parsed = parseOllamaResponse(data);
     const rawPosts = ensureArray(parsed, 'posts');
-    return mapRawPostsToPosts(rawPosts);
+    return mapRawPostsToPosts(rawPosts, baseTime ?? Date.now());
   },
 
   async generateComments(

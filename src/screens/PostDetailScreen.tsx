@@ -5,18 +5,27 @@ import { useRoute } from '@react-navigation/native';
 import { Post, Comment } from '../types';
 import { PostCard } from '../components/PostCard';
 import { LlmService } from '../services/llm';
-import { useSettingsStore } from '../store';
+import { useFeedStore, usePostCommentsStore, usePostEngagementStore, useSettingsStore, useUserPostsStore } from '../store';
 
 export const PostDetailScreen = () => {
   const route = useRoute<any>();
   const { post } = route.params as { post: Post };
   const settings = useSettingsStore();
   const theme = useTheme();
+  const updateFeedPostCommentCount = useFeedStore((s) => s.updatePostCommentCount);
+  const updateFeedPostLikes = useFeedStore((s) => s.updatePostLikes);
+  const updateUserPostLikes = useUserPostsStore((s) => s.updatePostLikes);
+  const updateUserPostCommentCount = useUserPostsStore((s) => s.updatePostCommentCount);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [newComment, setNewComment] = useState('');
+
+  const syncCommentCount = (nextCount: number) => {
+    updateFeedPostCommentCount(post.id, nextCount);
+    updateUserPostCommentCount(post.id, nextCount);
+  };
 
   const loadComments = async (mode: 'replace' | 'append' = 'replace') => {
     if (loading || loadingMore) {
@@ -29,7 +38,16 @@ export const PostDetailScreen = () => {
     }
     try {
       const generated = await LlmService.generateComments(settings, post.content, 3);
-      setComments((prev) => (mode === 'append' ? [...prev, ...generated] : generated));
+      if (mode === 'append') {
+        const next = [...comments, ...generated];
+        setComments(next);
+        usePostCommentsStore.getState().appendCommentsForPost(post.id, generated);
+        syncCommentCount(next.length);
+      } else {
+        setComments(generated);
+        usePostCommentsStore.getState().setCommentsForPost(post.id, generated);
+        syncCommentCount(generated.length);
+      }
     } catch (error) {
       console.error(error);
       const detail = error instanceof Error ? error.message : String(error);
@@ -41,8 +59,20 @@ export const PostDetailScreen = () => {
   };
 
   useEffect(() => {
+    // Opening a post simulates engagement so likes can grow naturally.
+    const engagement = usePostEngagementStore.getState();
+    const likes = engagement.growLikeCount(post.id);
+    updateFeedPostLikes(post.id, likes);
+    updateUserPostLikes(post.id, likes);
+
+    const cachedComments = usePostCommentsStore.getState().commentsByPostId[post.id] ?? [];
+    if (cachedComments.length > 0) {
+      setComments(cachedComments);
+      syncCommentCount(cachedComments.length);
+      return;
+    }
     loadComments();
-  }, []);
+  }, [post.id]);
 
   const handlePostComment = () => {
     if (!newComment.trim()) return;
@@ -57,7 +87,10 @@ export const PostDetailScreen = () => {
       content: newComment,
       createdAt: new Date().toISOString(),
     };
-    setComments([...comments, userComment]);
+    const next = [...comments, userComment];
+    setComments(next);
+    usePostCommentsStore.getState().setCommentsForPost(post.id, next);
+    syncCommentCount(next.length);
     setNewComment('');
   };
 

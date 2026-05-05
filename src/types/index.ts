@@ -12,6 +12,7 @@ export interface Post {
   createdAt: string;
   likes: number;
   commentsCount: number;
+  media?: MediaAsset[];
 }
 
 export interface Comment {
@@ -19,6 +20,15 @@ export interface Comment {
   author: User;
   content: string;
   createdAt: string;
+}
+
+export interface MediaAsset {
+  id: string;
+  type: 'image' | 'video';
+  uri: string;
+  thumbnailUri?: string;
+  source?: 'local' | 'pixabay' | 'ai';
+  provider?: string;
 }
 
 export type ThemePreference = 'system' | 'light' | 'dark';
@@ -36,8 +46,10 @@ export interface AppSettings {
   enableRemoteFallback: boolean;
   /** Absolute path to a MediaPipe-compatible `.task` model on the device (e.g. from adb push). */
   localModelPath: string;
+  localImageModelPath: string;
   localMaxTokens: number;
   localTemperature: number;
+  pixabayApiKey: string;
 }
 
 export interface UserProfile {
