@@ -1,8 +1,13 @@
 # Release APK + App Bundle for Google Play. Release builds use __DEV__ false (real ad SDK).
 #
-# AdMob IDs live in android/local.properties (single source of truth) — CI writes that file
-# from values below, overridable per repo by setting ADMOB_* GitHub Actions secrets.
-# Production keystore is stored in GitHub Actions secrets (see step "Decode upload keystore").
+# Required repository secrets (set via `gh secret set`):
+#   ADMOB_ANDROID_APP_ID, ADMOB_BANNER_AD_UNIT_ID, ADMOB_INTERSTITIAL_AD_UNIT_ID,
+#   ADMOB_NATIVE_AD_UNIT_ID, ADMOB_REWARDED_AD_UNIT_ID,
+#   ANDROID_CI_KEYSTORE_BASE64, ANDROID_CI_KEYSTORE_PASSWORD,
+#   ANDROID_CI_KEY_ALIAS, ANDROID_CI_KEY_PASSWORD.
+# Optional: ADMOB_DELAY_APP_MEASUREMENT_INIT, ADMOB_OPTIMIZE_INITIALIZATION, ADMOB_OPTIMIZE_AD_LOADING.
+# CI loads AdMob secrets into env vars for `expo prebuild`, then writes them into
+# android/local.properties (the single on-disk source of truth) before Gradle.
 
 name: Android Play release (APK + AAB)
 
@@ -71,36 +76,42 @@ jobs:
             echo "Created src/config.ts from config.example.ts for CI bundling."
           fi
 
-      - name: Resolve AdMob values (env-only for prebuild; written to local.properties afterwards)
+      - name: Load AdMob IDs from GitHub Secrets
         env:
           SEC_APP: ${{ secrets.ADMOB_ANDROID_APP_ID }}
           SEC_BANNER: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
           SEC_INT: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
           SEC_NATIVE: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
           SEC_REWARD: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
+          SEC_DELAY: ${{ secrets.ADMOB_DELAY_APP_MEASUREMENT_INIT }}
+          SEC_OPT_INIT: ${{ secrets.ADMOB_OPTIMIZE_INITIALIZATION }}
+          SEC_OPT_LOAD: ${{ secrets.ADMOB_OPTIMIZE_AD_LOADING }}
         run: |
           set -euo pipefail
-          # Defaults are baked into the workflow so a fresh fork builds without setting any secrets.
-          # Override per-fork by setting ADMOB_* repository secrets.
-          ADMOB_APP_ID="${SEC_APP:-ca-app-pub-8382831211800454~6304256334}"
-          ADMOB_BANNER="${SEC_BANNER:-ca-app-pub-8382831211800454/9896940421}"
-          ADMOB_INT="${SEC_INT:-ca-app-pub-8382831211800454/9056518545}"
-          ADMOB_NATIVE="${SEC_NATIVE:-ca-app-pub-8382831211800454/5434951231}"
-          ADMOB_REWARD="${SEC_REWARD:-ca-app-pub-8382831211800454/7049302304}"
+          missing=()
+          [ -n "${SEC_APP:-}" ]    || missing+=(ADMOB_ANDROID_APP_ID)
+          [ -n "${SEC_BANNER:-}" ] || missing+=(ADMOB_BANNER_AD_UNIT_ID)
+          [ -n "${SEC_INT:-}" ]    || missing+=(ADMOB_INTERSTITIAL_AD_UNIT_ID)
+          [ -n "${SEC_NATIVE:-}" ] || missing+=(ADMOB_NATIVE_AD_UNIT_ID)
+          [ -n "${SEC_REWARD:-}" ] || missing+=(ADMOB_REWARDED_AD_UNIT_ID)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub Secrets: ${missing[*]}. Set them via gh secret set."
+            exit 1
+          fi
           # Expose to subsequent steps. app.config.js reads ADMOB_ANDROID_APP_ID from env when set,
           # which lets `expo prebuild` succeed without an android/ directory existing yet (prebuild
           # creates it). After prebuild we mirror these into android/local.properties for the record.
           {
-            echo "ADMOB_ANDROID_APP_ID=${ADMOB_APP_ID}"
-            echo "ADMOB_BANNER_AD_UNIT_ID=${ADMOB_BANNER}"
-            echo "ADMOB_INTERSTITIAL_AD_UNIT_ID=${ADMOB_INT}"
-            echo "ADMOB_NATIVE_AD_UNIT_ID=${ADMOB_NATIVE}"
-            echo "ADMOB_REWARDED_AD_UNIT_ID=${ADMOB_REWARD}"
-            echo "ADMOB_DELAY_APP_MEASUREMENT_INIT=false"
-            echo "ADMOB_OPTIMIZE_INITIALIZATION=true"
-            echo "ADMOB_OPTIMIZE_AD_LOADING=true"
+            echo "ADMOB_ANDROID_APP_ID=${SEC_APP}"
+            echo "ADMOB_BANNER_AD_UNIT_ID=${SEC_BANNER}"
+            echo "ADMOB_INTERSTITIAL_AD_UNIT_ID=${SEC_INT}"
+            echo "ADMOB_NATIVE_AD_UNIT_ID=${SEC_NATIVE}"
+            echo "ADMOB_REWARDED_AD_UNIT_ID=${SEC_REWARD}"
+            echo "ADMOB_DELAY_APP_MEASUREMENT_INIT=${SEC_DELAY:-false}"
+            echo "ADMOB_OPTIMIZE_INITIALIZATION=${SEC_OPT_INIT:-true}"
+            echo "ADMOB_OPTIMIZE_AD_LOADING=${SEC_OPT_LOAD:-true}"
           } >> "$GITHUB_ENV"
-          echo "Resolved AdMob app + 4 ad-unit IDs (will be written to android/local.properties post-prebuild)."
+          echo "Loaded 5 AdMob IDs from GitHub Secrets."
 
       - name: Decode upload keystore (Play upload signing)
         env:
