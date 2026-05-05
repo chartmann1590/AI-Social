@@ -207,19 +207,10 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          # NOTE: action runs this under /bin/sh (dash), so no `set -o pipefail`.
-          script: |
-            set -eu
-            adb wait-for-device
-            adb shell input keyevent 82 || true
-            APK=android/app/build/outputs/apk/debug/app-debug.apk
-            test -f "$APK"
-            adb install -r -t "$APK"
-            curl -Ls "https://get.maestro.mobile.dev" | bash
-            export PATH="$HOME/.maestro/bin:$PATH"
-            maestro --version
-            mkdir -p maestro-output
-            maestro test --debug-output maestro-output .maestro/smoke.yaml
+          # The action runs each script line as a separate `/usr/bin/sh -c` invocation,
+          # so any multi-line script with shared variables breaks. Delegate to a single
+          # bash invocation that owns its own state.
+          script: bash .github/scripts/maestro-e2e.sh
 
       - name: Upload Maestro debug output on failure
         if: failure()
