@@ -67,6 +67,14 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Ensure src/config.ts (gitignored locally; required for tsc + release bundle)
+        run: |
+          set -euo pipefail
+          if [ ! -f src/config.ts ]; then
+            cp src/config.example.ts src/config.ts
+            echo "Created src/config.ts from config.example.ts for CI bundling."
+          fi
+
       - name: TypeScript check
         run: npx tsc --noEmit
 
@@ -84,14 +92,6 @@ jobs:
           echo "$v" > "$f"
           echo "version_code=$v" >> "$GITHUB_OUTPUT"
           echo "Bumped versionCode to $v"
-
-      - name: Ensure src/config.ts (gitignored locally; required for release bundle)
-        run: |
-          set -euo pipefail
-          if [ ! -f src/config.ts ]; then
-            cp src/config.example.ts src/config.ts
-            echo "Created src/config.ts from config.example.ts for CI bundling."
-          fi
 
       - name: Load AdMob IDs from GitHub Secrets
         env:

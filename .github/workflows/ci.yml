@@ -38,6 +38,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Ensure src/config.ts (gitignored locally; needed for tsc)
+        run: |
+          set -euo pipefail
+          if [ ! -f src/config.ts ]; then
+            cp src/config.example.ts src/config.ts
+          fi
+
       - name: TypeScript check
         run: npx tsc --noEmit
 
