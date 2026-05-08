@@ -1,8 +1,17 @@
 {
   "name": "AI Social",
   "short_name": "AI Social",
+  "description": "A private AI-powered social feed that runs on your phone.",
   "start_url": "./",
   "display": "browser",
   "background_color": "#03050a",
-  "theme_color": "#03050a"
+  "theme_color": "#03050a",
+  "icons": [
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
