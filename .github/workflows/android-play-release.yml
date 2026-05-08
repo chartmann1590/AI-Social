@@ -269,21 +269,6 @@ jobs:
           "$APKSIGNER" verify --print-certs "$APK" | head -20
           node scripts/verify-android-16kb-page-size.mjs "$APK" "$AAB"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: android-play-v${{ steps.bump.outputs.version_code }}
-          name: Android Play v${{ steps.bump.outputs.version_code }}
-          body: |
-            Production AdMob release build (versionCode ${{ steps.bump.outputs.version_code }}).
-
-            Attachments: app-release.aab for Play Console, app-release.apk for sideload or QA.
-          files: |
-            android/app/build/outputs/bundle/release/app-release.aab
-            android/app/build/outputs/apk/release/app-release.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Commit version code bump (best-effort, retries on concurrent push)
         run: |
           set -euo pipefail
@@ -304,4 +289,53 @@ jobs:
             git fetch origin "${{ github.ref_name }}"
             git rebase "origin/${{ github.ref_name }}" || { git rebase --abort; sleep $((attempt * 2)); }
           done
-          echo "::warning::Failed to push version-code bump after 5 attempts (release artifacts are already published)."
+          echo "::warning::Failed to push version-code bump after 5 attempts; release publication will continue using the local version-code commit."
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: android-play-v${{ steps.bump.outputs.version_code }}
+          VERSION_CODE: ${{ steps.bump.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$AAB"
+          test -f "$APK"
+
+          release_sha="$(git rev-parse HEAD)"
+          git fetch --tags origin
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            git tag "$TAG" "$release_sha"
+            git push origin "refs/tags/$TAG"
+          fi
+
+          notes="$(mktemp)"
+          cat > "$notes" <<EOF
+          Production AdMob release build (versionCode ${VERSION_CODE}).
+
+          Attachments: app-release.aab for Play Console, app-release.apk for sideload or QA.
+          EOF
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --title "Android Play v${VERSION_CODE}" \
+              --notes-file "$notes" \
+              --draft=false \
+              --latest
+            gh release upload "$TAG" "$AAB" "$APK" --clobber
+          else
+            gh release create "$TAG" "$AAB" "$APK" \
+              --title "Android Play v${VERSION_CODE}" \
+              --notes-file "$notes" \
+              --target "$release_sha" \
+              --latest
+          fi
+
+          is_draft="$(gh release view "$TAG" --json isDraft --jq '.isDraft')"
+          url="$(gh release view "$TAG" --json url --jq '.url')"
+          if [ "$is_draft" != "false" ]; then
+            echo "::error::Release $TAG exists but is still a draft: $url"
+            exit 1
+          fi
+          echo "Published GitHub release: $url"
