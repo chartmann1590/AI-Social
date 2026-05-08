@@ -7,8 +7,11 @@
     "android": "cross-env NODE_ENV=development CI=true expo run:android",
     "android:release": "cross-env NODE_ENV=production CI=true expo run:android --variant release",
     "android:deploy": "cross-env NODE_ENV=production CI=true cmd /c \"cd android && gradlew.bat installRelease\"",
+    "android:verify-page-size": "node scripts/verify-android-16kb-page-size.mjs",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "jest",
+    "test:ci": "jest --ci"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -30,8 +33,11 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
     "cross-env": "^10.1.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.9",
     "typescript": "~5.9.2"
   },
   "private": true
