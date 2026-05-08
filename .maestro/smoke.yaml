@@ -2,5 +2,20 @@ appId: com.anonymous.AISocial
 ---
 - launchApp:
     clearState: true
-- assertVisible: "AI Social"
+
+# The headless emulator occasionally surfaces a "Pixel Launcher isn't
+# responding" ANR dialog during cold launch (system process flake, not our
+# app). If it shows up, tap Wait so the dialog closes and our activity is
+# brought back to the foreground.
+- runFlow:
+    when:
+      visible: "Pixel Launcher isn't responding"
+    commands:
+      - tapOn: "Wait"
+
+# Wait up to 30 s for the welcome screen. The app's first cold launch under
+# the emulator does a lot of GC + classlinker work before drawing.
+- extendedWaitUntil:
+    visible: "AI Social"
+    timeout: 30000
 - assertVisible: "Let's go"
