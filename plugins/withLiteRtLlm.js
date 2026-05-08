@@ -8,6 +8,7 @@ const {
   withAndroidManifest,
   withAppBuildGradle,
   withDangerousMod,
+  withGradleProperties,
   withMainApplication,
   createRunOncePlugin,
 } = require('expo/config-plugins');
@@ -314,6 +315,24 @@ class LiteRtLlmPackage : ReactPackage {
 }
 
 function withLiteRtLlmInternal(config) {
+  config = withGradleProperties(config, (cfg) => {
+    const existing = cfg.modResults.find(
+      (item) => item.type === 'property' && item.key === 'expo.useLegacyPackaging',
+    );
+
+    if (existing) {
+      existing.value = 'false';
+    } else {
+      cfg.modResults.push({
+        type: 'property',
+        key: 'expo.useLegacyPackaging',
+        value: 'false',
+      });
+    }
+
+    return cfg;
+  });
+
   // Allow cleartext HTTP so users can point at a LAN / Tailscale Ollama server
   // (http://10.x / 192.168.x / 100.x). Without this, Android 9+ blocks the
   // fetch before it leaves the device and the user sees "Network request failed".

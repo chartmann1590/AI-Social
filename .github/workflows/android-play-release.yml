@@ -53,6 +53,26 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android 16 KB verification tools
+        env:
+          BUNDLETOOL_VERSION: "1.18.3"
+        run: |
+          set -euo pipefail
+          sdkmanager "build-tools;35.0.0" "ndk;28.2.13676358"
+          curl -fsSL \
+            -o "$RUNNER_TEMP/bundletool.jar" \
+            "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar"
+          echo "BUNDLETOOL_JAR=$RUNNER_TEMP/bundletool.jar" >> "$GITHUB_ENV"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Jest unit tests (gate the release on green tests)
+        run: npm run test:ci
+
       - name: Bump Play Store version code
         id: bump
         run: |
@@ -64,9 +84,6 @@ jobs:
           echo "$v" > "$f"
           echo "version_code=$v" >> "$GITHUB_OUTPUT"
           echo "Bumped versionCode to $v"
-
-      - name: Install npm dependencies
-        run: npm ci
 
       - name: Ensure src/config.ts (gitignored locally; required for release bundle)
         run: |
@@ -238,7 +255,7 @@ jobs:
         run: |
           ./gradlew bundleRelease --stacktrace
 
-      - name: Verify outputs and signing
+      - name: Verify outputs, signing, and 16 KB page-size compliance
         run: |
           set -euo pipefail
           AAB=android/app/build/outputs/bundle/release/app-release.aab
@@ -250,6 +267,7 @@ jobs:
           BUILD_TOOLS=$(ls -1 "$ANDROID_SDK_ROOT/build-tools/" | sort -V | tail -1)
           APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
           "$APKSIGNER" verify --print-certs "$APK" | head -20
+          node scripts/verify-android-16kb-page-size.mjs "$APK" "$AAB"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
