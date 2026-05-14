@@ -1,4 +1,4 @@
-appId: com.anonymous.AISocial
+appId: com.charles.aisocial
 ---
 - launchApp:
     clearState: true
