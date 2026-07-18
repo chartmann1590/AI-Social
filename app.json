@@ -2,7 +2,8 @@
   "expo": {
     "plugins": [
       "expo-dev-client",
-      "./plugins/withLiteRtLlm.js"
+      "./plugins/withLiteRtLlm.js",
+      "./plugins/withFeedback.js"
     ],
     "name": "AISocial",
     "slug": "AISocial",

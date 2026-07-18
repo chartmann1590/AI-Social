@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, useColorScheme, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,8 +8,12 @@ import { AppNavigator } from './src/navigation';
 import { useSettingsStore } from './src/store';
 import { AdMobBanner } from './src/ads/AdMobBanner';
 import { AdMobProvider } from './src/ads/AdMobProvider';
+import { initializeFirebase } from './src/services/firebase';
 
 export default function App() {
+  useEffect(() => {
+    initializeFirebase();
+  }, []);
   const colorScheme = useColorScheme();
   const themePreference = useSettingsStore((state) => state.themePreference);
 

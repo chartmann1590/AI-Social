@@ -104,6 +104,18 @@ export const SettingsScreen = () => {
         Rewards and ad-free time
       </Button>
 
+      <Button
+        mode="contained-tonal"
+        icon="bug-outline"
+        onPress={() => {
+          NativeModules.AISocialFeedback?.launchFeedback();
+        }}
+        style={styles.modelsLink}
+      >
+        Support & Feedback (Bug Reporter)
+      </Button>
+
+
       <Text variant="titleSmall" style={styles.sectionTitle}>
         LLM mode
       </Text>
