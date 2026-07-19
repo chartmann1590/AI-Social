@@ -42,14 +42,19 @@ jobs:
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
         run: |
-          curl -s \
+          HTTP_CODE=$(curl -s -w "%{http_code}" \
             -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            "https://firebasecrashlytics.googleapis.com/v1alpha/projects/${FIREBASE_PROJECT_NUMBER}/apps/${FIREBASE_APP_ID}/reports/topIssues?pageSize=25" \
-            > crashlytics_issues.json
-          cat crashlytics_issues.json | jq .
-          if cat crashlytics_issues.json | jq -e '.error' > /dev/null 2>&1; then
-            echo "Crashlytics API returned an error (see above)"; exit 1
+            "https://firebasecrashlytics.googleapis.com/v1alpha/projects/${FIREBASE_PROJECT_NUMBER}/apps/${FIREBASE_APP_ID}/reports/topIssues?page_size=25" \
+            -o crashlytics_issues.json)
+          if [ "$HTTP_CODE" = "404" ]; then
+            echo '{"groups":[]}' > crashlytics_issues.json
+            echo "Crashlytics: no crash data yet (404)"
+          elif [ "$HTTP_CODE" != "200" ]; then
+            echo "Crashlytics API returned HTTP $HTTP_CODE"
+            cat crashlytics_issues.json | jq .
+            exit 1
           fi
+          cat crashlytics_issues.json | jq '.groups | length' | xargs -I{} echo "Crashlytics returned {} issues"
 
       - name: Sync to GitHub Issues
         uses: actions/github-script@v7
