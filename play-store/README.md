@@ -2,7 +2,7 @@
 
 Everything Google Play asks for is in this folder, organized so each Play Console field has exactly one file (or one folder) to point at.
 
-When you open the Play Console listing for `com.anonymous.AISocial`, follow the checklist below. Every "→ filename" maps to a real file in this directory.
+When you open the Play Console listing for `com.charles.aisocial`, follow the checklist below. Every "→ filename" maps to a real file in this directory.
 
 ---
 
@@ -111,5 +111,5 @@ Capture on a real device (1080×2400 recommended for phone), then drop the PNGs 
 
 - **YouTube upload of `promo.mp4`** — Play Console takes a YouTube URL, not a local file. Upload as Unlisted is fine.
 - **Real tablet screenshots** — current ones are emulator-rendered.
-- **Play Console account** with `com.anonymous.AISocial` registered and an internal-testing track set up.
+- **Play Console account** with `com.charles.aisocial` registered and an internal-testing track set up.
 - **Content rating questionnaire** — answer in the Play Console; not a static file.

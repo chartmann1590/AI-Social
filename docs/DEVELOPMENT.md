@@ -128,7 +128,7 @@ Use this when you want a release app that runs with Metro fully stopped.
 5. Ensure Metro is not running, then launch the app from launcher icon.
 6. Optional quick launch from adb:
    ```powershell
-   adb shell monkey -p com.anonymous.AISocial 1
+   adb shell monkey -p com.charles.aisocial 1
    ```
 
 ## Device Testing (Development Build)

@@ -21,12 +21,12 @@ function getAndroidPackage(config) {
   return (
     config.android?.package ??
     config?.expo?.android?.package ??
-    'com.anonymous.AISocial'
+    'com.charles.aisocial'
   );
 }
 
 /**
- * @param {string} applicationPackage e.g. com.anonymous.AISocial
+ * @param {string} applicationPackage e.g. com.charles.aisocial
  */
 function writeNativeSources(applicationPackage) {
   const litertPackage = `${applicationPackage}.litert`;
