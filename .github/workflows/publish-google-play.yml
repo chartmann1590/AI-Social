@@ -205,6 +205,8 @@ jobs:
           NOTES="$RELEASE_NOTES_INPUT"
           if [ -n "$NOTES" ]; then
             echo "Using provided release notes."
+          elif [ -f play-store/listing/release-notes.txt ]; then
+            NOTES=$(cat play-store/listing/release-notes.txt)
           else
             PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
             if [ -n "$PREV_TAG" ]; then
@@ -212,14 +214,16 @@ jobs:
             fi
           fi
           if [ -z "$NOTES" ]; then
-            if [ -f play-store/listing/release-notes.txt ]; then
-              NOTES=$(cat play-store/listing/release-notes.txt)
-            else
-              NOTES="Bug fixes and performance improvements."
-            fi
+            NOTES="Bug fixes and performance improvements."
+          fi
+          # Play rejects "whatsnew" text over 500 chars per language; truncate defensively
+          # regardless of source so this can never fail the publish step outright.
+          NOTES=$(printf '%s' "$NOTES" | cut -c1-497)
+          if [ "$(printf '%s' "$NOTES" | wc -c)" -ge 497 ]; then
+            NOTES="${NOTES}..."
           fi
           mkdir -p distribution/whatsnew
-          echo "$NOTES" > distribution/whatsnew/whatsnew-en-US
+          printf '%s' "$NOTES" > distribution/whatsnew/whatsnew-en-US
           echo "Release notes:"
           cat distribution/whatsnew/whatsnew-en-US
 
