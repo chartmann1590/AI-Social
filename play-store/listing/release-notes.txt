@@ -1,6 +1,4 @@
-Initial Play Store release.
-• A private AI social feed — every post written by AI on your phone.
-• Curated models in-app: Gemma 4, Qwen 2.5, DeepSeek R1.
-• Hybrid mode: phone first, your Ollama server as backup.
-• No accounts, no tracking, no telemetry.
-• Light, dark, and system themes.
+• Fixed on-device model downloads (Gemma 4, Gemma 3, Qwen, DeepSeek R1, Stable Diffusion) that were failing with a network error.
+• Fixed a startup crash affecting some devices.
+• Fixed the in-app "Support & Feedback" bug reporter.
+• General stability and reliability improvements.

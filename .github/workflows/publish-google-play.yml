@@ -1,0 +1,248 @@
+name: Publish to Google Play
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_play_publish:
+        description: 'Type "publish" to confirm you want to publish to Google Play production'
+        required: true
+        type: string
+      release_notes:
+        description: 'Optional release notes (en-US). If omitted, uses recent commits.'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: google-play-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish:
+    if: ${{ github.event.inputs.confirm_play_publish == 'publish' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless publish is confirmed
+        run: |
+          echo "confirm_play_publish=${{ github.event.inputs.confirm_play_publish }}"
+          echo "Proceeding with Google Play publish."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK extras
+        run: |
+          sdkmanager "build-tools;35.0.0" "ndk;28.2.13676358"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Ensure src/config.ts
+        run: |
+          if [ ! -f src/config.ts ]; then
+            cp src/config.example.ts src/config.ts
+          fi
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test:ci
+
+      - name: Materialize google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          mkdir -p android/app
+          echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+
+      - name: Materialize release keystore
+        env:
+          ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+        run: |
+          if [ -n "${ANDROID_CI_KEYSTORE_BASE64:-}" ] \
+             && [ -n "${ANDROID_CI_KEYSTORE_PASSWORD:-}" ] \
+             && [ -n "${ANDROID_CI_KEY_ALIAS:-}" ] \
+             && [ -n "${ANDROID_CI_KEY_PASSWORD:-}" ]; then
+            printf '%s' "$ANDROID_CI_KEYSTORE_BASE64" | tr -d ' \t\r\n' | base64 -d --ignore-garbage > "$RUNNER_TEMP/upload.jks"
+            chmod 600 "$RUNNER_TEMP/upload.jks"
+            echo "ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+            echo "Keystore materialized."
+          else
+            echo "::warning::Keystore secrets not fully set; will use debug keystore."
+          fi
+
+      - name: Load AdMob IDs
+        env:
+          SEC_APP: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+          SEC_BANNER: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          SEC_INT: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+          SEC_NATIVE: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
+          SEC_REWARD: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
+          SEC_DELAY: ${{ secrets.ADMOB_DELAY_APP_MEASUREMENT_INIT }}
+          SEC_OPT_INIT: ${{ secrets.ADMOB_OPTIMIZE_INITIALIZATION }}
+          SEC_OPT_LOAD: ${{ secrets.ADMOB_OPTIMIZE_AD_LOADING }}
+        run: |
+          missing=()
+          [ -n "${SEC_APP:-}" ]    || missing+=(ADMOB_ANDROID_APP_ID)
+          [ -n "${SEC_BANNER:-}" ] || missing+=(ADMOB_BANNER_AD_UNIT_ID)
+          [ -n "${SEC_INT:-}" ]    || missing+=(ADMOB_INTERSTITIAL_AD_UNIT_ID)
+          [ -n "${SEC_NATIVE:-}" ] || missing+=(ADMOB_NATIVE_AD_UNIT_ID)
+          [ -n "${SEC_REWARD:-}" ] || missing+=(ADMOB_REWARDED_AD_UNIT_ID)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub Secrets: ${missing[*]}."
+            exit 1
+          fi
+          {
+            echo "ADMOB_ANDROID_APP_ID=${SEC_APP}"
+            echo "ADMOB_BANNER_AD_UNIT_ID=${SEC_BANNER}"
+            echo "ADMOB_INTERSTITIAL_AD_UNIT_ID=${SEC_INT}"
+            echo "ADMOB_NATIVE_AD_UNIT_ID=${SEC_NATIVE}"
+            echo "ADMOB_REWARDED_AD_UNIT_ID=${SEC_REWARD}"
+            echo "ADMOB_DELAY_APP_MEASUREMENT_INIT=${SEC_DELAY:-false}"
+            echo "ADMOB_OPTIMIZE_INITIALIZATION=${SEC_OPT_INIT:-true}"
+            echo "ADMOB_OPTIMIZE_AD_LOADING=${SEC_OPT_LOAD:-true}"
+          } >> "$GITHUB_ENV"
+
+      - name: Compute Play version codes
+        id: versions
+        run: |
+          version_code="$(date -u +'%y%j%H%M')"
+          version_name="1.1.0.$(date -u +'%Y%m%d.%H%M')"
+          echo "ANDROID_VERSION_CODE=${version_code}" >> "$GITHUB_ENV"
+          echo "ANDROID_VERSION_NAME=${version_name}" >> "$GITHUB_ENV"
+          echo "version_code=${version_code}" >> "$GITHUB_OUTPUT"
+          echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
+          echo "Computed versionCode=${version_code} versionName=${version_name}"
+
+      - name: Expo prebuild (Android)
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Write android/local.properties
+        env:
+          GH_PROXY_BASE_URL: ${{ vars.GH_PROXY_BASE_URL }}
+          GH_PROXY_APP_SECRET: ${{ secrets.GH_PROXY_APP_SECRET }}
+          GH_REPO_OWNER: ${{ vars.GH_REPO_OWNER }}
+          GH_REPO_NAME: ${{ vars.GH_REPO_NAME }}
+        run: |
+          sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          {
+            echo "admob.android_app_id=${ADMOB_ANDROID_APP_ID}"
+            echo "admob.banner_ad_unit_id=${ADMOB_BANNER_AD_UNIT_ID}"
+            echo "admob.interstitial_ad_unit_id=${ADMOB_INTERSTITIAL_AD_UNIT_ID}"
+            echo "admob.native_ad_unit_id=${ADMOB_NATIVE_AD_UNIT_ID}"
+            echo "admob.rewarded_ad_unit_id=${ADMOB_REWARDED_AD_UNIT_ID}"
+            echo "admob.delay_app_measurement_init=${ADMOB_DELAY_APP_MEASUREMENT_INIT}"
+            echo "admob.optimize_initialization=${ADMOB_OPTIMIZE_INITIALIZATION}"
+            echo "admob.optimize_ad_loading=${ADMOB_OPTIMIZE_AD_LOADING}"
+            echo "github.proxy.base_url=${GH_PROXY_BASE_URL}"
+            echo "app.proxy.secret=${GH_PROXY_APP_SECRET}"
+            echo "github.repo.owner=${GH_REPO_OWNER}"
+            echo "github.repo.name=${GH_REPO_NAME}"
+            echo "sdk.dir=${sdk}"
+          } > android/local.properties
+
+      - name: Build Play release AAB
+        working-directory: android
+        env:
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+          GH_PROXY_BASE_URL: ${{ vars.GH_PROXY_BASE_URL }}
+          GH_PROXY_APP_SECRET: ${{ secrets.GH_PROXY_APP_SECRET }}
+          GH_REPO_OWNER: ${{ vars.GH_REPO_OWNER }}
+          GH_REPO_NAME: ${{ vars.GH_REPO_NAME }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:bundleRelease --stacktrace
+
+      - name: Verify AAB exists
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          test -f "$AAB" || { echo "::error::AAB not found at $AAB"; exit 1; }
+          ls -la "$AAB"
+
+      - name: Generate Play release notes
+        id: notes
+        run: |
+          NOTES="${{ github.event.inputs.release_notes }}"
+          if [ -n "$NOTES" ]; then
+            echo "Using provided release notes."
+          else
+            PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              NOTES=$(git log "$PREV_TAG..HEAD" --oneline --no-decorate 2>/dev/null | head -20)
+            fi
+          fi
+          if [ -z "$NOTES" ]; then
+            if [ -f play-store/listing/release-notes.txt ]; then
+              NOTES=$(cat play-store/listing/release-notes.txt)
+            else
+              NOTES="Bug fixes and performance improvements."
+            fi
+          fi
+          mkdir -p distribution/whatsnew
+          echo "$NOTES" > distribution/whatsnew/whatsnew-en-US
+          echo "Release notes:"
+          cat distribution/whatsnew/whatsnew-en-US
+
+      - name: Upload AAB as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      - name: Upload mapping file (if present)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mapping
+          path: android/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: ignore
+
+      - name: Verify service account JSON
+        run: |
+          if [ -z "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" ]; then
+            echo "::error::GOOGLE_PLAY_SERVICE_ACCOUNT_JSON secret is not set."
+            exit 1
+          fi
+          echo "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is present."
+
+      - name: Publish to Google Play
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.charles.aisocial
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: production
+          status: completed
+          whatsNewDirectory: distribution/whatsnew
+          mappingFile: android/app/build/outputs/mapping/release/mapping.txt
