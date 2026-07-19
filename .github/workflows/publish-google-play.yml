@@ -192,8 +192,10 @@ jobs:
 
       - name: Generate Play release notes
         id: notes
+        env:
+          RELEASE_NOTES_INPUT: ${{ github.event.inputs.release_notes }}
         run: |
-          NOTES="${{ github.event.inputs.release_notes }}"
+          NOTES="$RELEASE_NOTES_INPUT"
           if [ -n "$NOTES" ]; then
             echo "Using provided release notes."
           else
