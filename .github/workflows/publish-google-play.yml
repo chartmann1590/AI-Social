@@ -247,4 +247,8 @@ jobs:
           track: production
           status: completed
           whatsNewDirectory: distribution/whatsnew
-          mappingFile: android/app/build/outputs/mapping/release/mapping.txt
+          # No mappingFile: minifyEnabled is off for this app (see android/app/build.gradle),
+          # so no ProGuard/R8 mapping.txt is ever produced. Pointing this at a path that
+          # never exists made the action throw ENOENT *after* successfully uploading the
+          # AAB, aborting before it committed the Play Console edit — i.e. every previous
+          # run got the bundle into Play's edit but never actually published it.
