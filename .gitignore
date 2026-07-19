@@ -75,3 +75,7 @@ onboarding_*.png
 # do not commit the 200 MB build artifact — releases are published via GitHub Releases
 play-store/app-release.apk
 play-store/*.aab
+
+# Cloudflare Worker local dev state/secrets (real secrets live in `wrangler secret put`)
+cloudflare/**/.wrangler
+cloudflare/**/.dev.vars

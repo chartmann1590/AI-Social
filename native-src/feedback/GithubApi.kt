@@ -55,22 +55,24 @@ object GithubClient {
         coerceInputValues = true
     }
 
-    fun createService(token: String?): GithubService {
+    /**
+     * Calls go to our Cloudflare Worker proxy (cloudflare/github-proxy), not api.github.com
+     * directly. The real GitHub PAT lives only as a Worker secret; the app authenticates to
+     * the worker with [appSecret], a much lower-stakes credential to have baked into an APK.
+     */
+    fun createService(proxyBaseUrl: String, appSecret: String): GithubService {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
-            redactHeader("Authorization")
+            redactHeader("X-App-Secret")
         }
+
+        val normalizedBaseUrl = if (proxyBaseUrl.endsWith("/")) proxyBaseUrl else "$proxyBaseUrl/"
 
         val okHttpClient = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val requestBuilder = chain.request().newBuilder()
                     .addHeader("Accept", "application/vnd.github+json")
-                    .addHeader("X-GitHub-Api-Version", "2022-11-28")
-                    .addHeader("User-Agent", "AISocial-Android/0.1")
-                
-                if (!token.isNullOrEmpty()) {
-                    requestBuilder.addHeader("Authorization", "Bearer $token")
-                }
+                    .addHeader("X-App-Secret", appSecret)
                 chain.proceed(requestBuilder.build())
             }
             .addInterceptor(logging)
@@ -78,7 +80,7 @@ object GithubClient {
 
         val contentType = "application/json".toMediaType()
         val retrofit = Retrofit.Builder()
-            .baseUrl("https://api.github.com/")
+            .baseUrl(normalizedBaseUrl)
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()

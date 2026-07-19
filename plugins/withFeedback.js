@@ -91,14 +91,36 @@ apply plugin: "org.jetbrains.kotlin.plugin.serialization"`
       }
     }
 
+    // `local.properties` only auto-populates a handful of reserved keys (sdk.dir, ndk.dir).
+    // Custom keys (github.*, etc.) are NOT exposed via `project.findProperty()` unless we
+    // load the file ourselves — without this, every `findProperty('github.*')` below
+    // silently returns null and the feedback tool looks "unconfigured" even when
+    // local.properties has real values.
+    if (!contents.includes('def localProperties = new Properties()')) {
+      contents = contents.replace(
+        /android\s*\{/,
+        `def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+
+android {`
+      );
+    }
+
     // Inject buildConfig fields in defaultConfig
-    if (!contents.includes('GITHUB_API_TOKEN')) {
+    if (!contents.includes('GITHUB_PROXY_BASE_URL')) {
+      // The GitHub PAT itself never ships in the app — it lives only as a secret on the
+      // Cloudflare Worker (cloudflare/github-proxy) that proxies these feedback-tool calls.
+      // The app authenticates to *that* worker with a much lower-stakes shared secret.
       const buildConfigFields = `
-        buildConfigField "String", "GITHUB_API_TOKEN", "\\"\${project.findProperty('github.api.token') ?: System.getenv('GH_API_TOKEN') ?: ''}\\""
-        buildConfigField "String", "GITHUB_REPO_OWNER", "\\"\${project.findProperty('github.repo.owner') ?: System.getenv('GH_REPO_OWNER') ?: 'REPLACE_WITH_REPO_OWNER'}\\""
-        buildConfigField "String", "GITHUB_REPO_NAME", "\\"\${project.findProperty('github.repo.name') ?: System.getenv('GH_REPO_NAME') ?: 'REPLACE_WITH_REPO_NAME'}\\""
+        buildConfigField "String", "GITHUB_PROXY_BASE_URL", "\\"\${localProperties.getProperty('github.proxy.base_url') ?: System.getenv('GH_PROXY_BASE_URL') ?: ''}\\""
+        buildConfigField "String", "GITHUB_PROXY_APP_SECRET", "\\"\${localProperties.getProperty('app.proxy.secret') ?: System.getenv('GH_PROXY_APP_SECRET') ?: ''}\\""
+        buildConfigField "String", "GITHUB_REPO_OWNER", "\\"\${localProperties.getProperty('github.repo.owner') ?: System.getenv('GH_REPO_OWNER') ?: 'REPLACE_WITH_REPO_OWNER'}\\""
+        buildConfigField "String", "GITHUB_REPO_NAME", "\\"\${localProperties.getProperty('github.repo.name') ?: System.getenv('GH_REPO_NAME') ?: 'REPLACE_WITH_REPO_NAME'}\\""
         buildConfigField "String", "FEEDBACK_ASSETS_DIR", "\\"feedback-assets\\""`;
-      
+
       contents = contents.replace(
         /defaultConfig\s*\{/,
         `defaultConfig {${buildConfigFields}`
@@ -113,9 +135,15 @@ apply plugin: "org.jetbrains.kotlin.plugin.serialization"`
       "    implementation 'androidx.datastore:datastore-preferences:1.0.0'",
       "    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'",
       "    implementation 'com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0'",
-      "    implementation 'androidx.compose.ui:ui:1.6.8'",
-      "    implementation 'androidx.compose.material3:material3:1.2.1'",
-      "    implementation 'androidx.compose.ui:ui-tooling-preview:1.6.8'",
+      // Pinned to match what react-native/other deps already force compose.foundation to at
+      // runtime. material3 1.2.1 predates Foundation's IndicationNodeFactory-based ripple API
+      // and crashes every Feedback dialog with "clickable only supports IndicationNodeFactory
+      // instances" once foundation is newer (check `./gradlew :app:dependencies` if this
+      // needs bumping again).
+      "    implementation 'androidx.compose.ui:ui:1.9.0'",
+      "    implementation 'androidx.compose.material3:material3:1.4.0'",
+      "    implementation 'androidx.compose.material:material-icons-core:1.7.8'",
+      "    implementation 'androidx.compose.ui:ui-tooling-preview:1.9.0'",
       "    implementation 'androidx.activity:activity-compose:1.8.2'",
       "    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'",
       "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0'"

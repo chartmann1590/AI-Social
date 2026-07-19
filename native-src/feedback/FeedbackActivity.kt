@@ -51,9 +51,10 @@ class FeedbackActivity : ComponentActivity() {
         
         bugReportRepo = BugReportRepo(this)
         
-        val token = BuildConfig.GITHUB_API_TOKEN
-        githubService = if (!token.isNullOrEmpty()) {
-            GithubClient.createService(token)
+        val proxyBaseUrl = BuildConfig.GITHUB_PROXY_BASE_URL
+        val appSecret = BuildConfig.GITHUB_PROXY_APP_SECRET
+        githubService = if (!proxyBaseUrl.isNullOrEmpty() && !appSecret.isNullOrEmpty()) {
+            GithubClient.createService(proxyBaseUrl, appSecret)
         } else {
             null
         }
@@ -103,12 +104,13 @@ fun FeedbackDashboardScreen(
 
     // Run initial configuration check
     LaunchedEffect(Unit) {
-        val token = BuildConfig.GITHUB_API_TOKEN
+        val proxyBaseUrl = BuildConfig.GITHUB_PROXY_BASE_URL
+        val appSecret = BuildConfig.GITHUB_PROXY_APP_SECRET
         val owner = BuildConfig.GITHUB_REPO_OWNER
         val repository = BuildConfig.GITHUB_REPO_NAME
 
-        if (token.isNullOrEmpty()) {
-            checkingConfigError = "GitHub API Token is missing. Feedback submission is disabled."
+        if (proxyBaseUrl.isNullOrEmpty() || appSecret.isNullOrEmpty()) {
+            checkingConfigError = "Feedback proxy is not configured. Feedback submission is disabled."
         } else if (owner.isNullOrEmpty() || owner == "REPLACE_WITH_REPO_OWNER" ||
             repository.isNullOrEmpty() || repository == "REPLACE_WITH_REPO_NAME"
         ) {
