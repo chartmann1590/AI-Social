@@ -1,0 +1,32 @@
+name: Update Google Play Store Listing
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [master]
+    paths:
+      - 'play-store/listing/title.txt'
+      - 'play-store/listing/short-description.txt'
+      - 'play-store/listing/full-description.txt'
+      - 'scripts/update-play-listing.mjs'
+      - '.github/workflows/update-play-listing.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  update-listing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update Play Store listing
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: node scripts/update-play-listing.mjs
