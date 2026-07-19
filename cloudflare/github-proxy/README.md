@@ -8,7 +8,13 @@ far cheaper to rotate than a repo-scoped GitHub token if it ever leaks from a
 decompiled APK.
 
 Only a narrow allowlist of routes is forwarded to `api.github.com`, and only
-for the configured `ALLOWED_OWNER`/`ALLOWED_REPO`:
+for the configured `ALLOWED_OWNER`/`ALLOWED_REPO`. **These two vars (set via
+`wrangler.jsonc`/`wrangler deploy`) and the app's `github.repo.owner`/
+`github.repo.name` (set via `android/local.properties` locally, or the
+`GH_REPO_OWNER`/`GH_REPO_NAME` GitHub Actions repo variables in CI) are the
+same fact configured in two independent places with nothing tying them
+together.** If the repo is ever renamed, update both — a mismatch makes
+every feedback-tool call 404 against this Worker with no indication why.
 
 - `POST /repos/{owner}/{repo}/issues` — create a bug report
 - `GET /repos/{owner}/{repo}/issues/{number}` — poll issue status

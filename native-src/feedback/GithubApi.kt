@@ -67,6 +67,13 @@ object GithubClient {
         }
 
         val normalizedBaseUrl = if (proxyBaseUrl.endsWith("/")) proxyBaseUrl else "$proxyBaseUrl/"
+        // The shared secret and feedback-report contents (which can include a user's
+        // name/email/description) must never go out in cleartext. A misconfigured
+        // http:// proxy URL (e.g. from a local dev tunnel) would otherwise silently
+        // leak both.
+        if (!normalizedBaseUrl.startsWith("https://")) {
+            throw IllegalArgumentException("GitHub proxy base URL must use https://: $proxyBaseUrl")
+        }
 
         val okHttpClient = OkHttpClient.Builder()
             .addInterceptor { chain ->

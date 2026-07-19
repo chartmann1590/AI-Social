@@ -34,10 +34,15 @@ const ALLOWED_ROUTES: Route[] = [
 const GITHUB_API = 'https://api.github.com';
 
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  // Never branch on length: an early return there leaks the secret's length
+  // via response timing. Compare over the longer length, padding the shorter
+  // string's missing chars with a sentinel that can't equal a real char code.
+  const len = Math.max(a.length, b.length);
+  let result = a.length ^ b.length;
+  for (let i = 0; i < len; i++) {
+    const ca = i < a.length ? a.charCodeAt(i) : -1;
+    const cb = i < b.length ? b.charCodeAt(i) : -1;
+    result |= ca ^ cb;
   }
   return result === 0;
 }

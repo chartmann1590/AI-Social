@@ -127,7 +127,8 @@ android {`
       );
     }
 
-    // Add necessary implementation dependencies
+    // Add necessary implementation dependencies (added once; safe to keep whatever
+    // version was here originally since these aren't the ones that needed re-tuning).
     const feedbackDeps = [
       "    implementation 'com.squareup.retrofit2:retrofit:2.9.0'",
       "    implementation 'com.squareup.okhttp3:okhttp:4.12.0'",
@@ -135,15 +136,6 @@ android {`
       "    implementation 'androidx.datastore:datastore-preferences:1.0.0'",
       "    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'",
       "    implementation 'com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0'",
-      // Pinned to match what react-native/other deps already force compose.foundation to at
-      // runtime. material3 1.2.1 predates Foundation's IndicationNodeFactory-based ripple API
-      // and crashes every Feedback dialog with "clickable only supports IndicationNodeFactory
-      // instances" once foundation is newer (check `./gradlew :app:dependencies` if this
-      // needs bumping again).
-      "    implementation 'androidx.compose.ui:ui:1.9.0'",
-      "    implementation 'androidx.compose.material3:material3:1.4.0'",
-      "    implementation 'androidx.compose.material:material-icons-core:1.7.8'",
-      "    implementation 'androidx.compose.ui:ui-tooling-preview:1.9.0'",
       "    implementation 'androidx.activity:activity-compose:1.8.2'",
       "    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'",
       "    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0'"
@@ -155,6 +147,36 @@ android {`
         `dependencies {
 ${feedbackDeps}`
       );
+    }
+
+    // Compose dependencies get their own per-artifact guard (keyed on the artifact
+    // coordinate, not the version) so bumping a version here always re-applies on the
+    // next prebuild — even once android/app/build.gradle already has an older pinned
+    // version committed. Without this, the old single "does retrofit exist" guard
+    // above would permanently block these from ever updating again, since retrofit
+    // is always already present once android/ has been generated once.
+    //
+    // Pinned to match what react-native/other deps already force compose.foundation to
+    // at runtime. material3 1.2.1 predates Foundation's IndicationNodeFactory-based
+    // ripple API and crashes every Feedback dialog with "clickable only supports
+    // IndicationNodeFactory instances" once foundation is newer (check
+    // `./gradlew :app:dependencies` if this needs bumping again).
+    const composeDeps = [
+      { artifact: 'androidx.compose.ui:ui', line: "    implementation 'androidx.compose.ui:ui:1.9.0'" },
+      { artifact: 'androidx.compose.material3:material3', line: "    implementation 'androidx.compose.material3:material3:1.4.0'" },
+      { artifact: 'androidx.compose.material:material-icons-core', line: "    implementation 'androidx.compose.material:material-icons-core:1.7.8'" },
+      { artifact: 'androidx.compose.ui:ui-tooling-preview', line: "    implementation 'androidx.compose.ui:ui-tooling-preview:1.9.0'" },
+    ];
+    for (const { artifact, line } of composeDeps) {
+      const existingLinePattern = new RegExp(
+        `^\\s*implementation ['"]${artifact.replace(/[.:]/g, '\\$&')}:[^'"]+['"]\\s*$`,
+        'm',
+      );
+      if (existingLinePattern.test(contents)) {
+        contents = contents.replace(existingLinePattern, line);
+      } else {
+        contents = contents.replace(/dependencies\s*\{/, `dependencies {\n${line}`);
+      }
     }
 
     cfg.modResults.contents = contents;

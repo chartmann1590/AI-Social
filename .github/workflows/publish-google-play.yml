@@ -98,17 +98,25 @@ jobs:
           ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
           ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
         run: |
-          if [ -n "${ANDROID_CI_KEYSTORE_BASE64:-}" ] \
-             && [ -n "${ANDROID_CI_KEYSTORE_PASSWORD:-}" ] \
-             && [ -n "${ANDROID_CI_KEY_ALIAS:-}" ] \
-             && [ -n "${ANDROID_CI_KEY_PASSWORD:-}" ]; then
-            printf '%s' "$ANDROID_CI_KEYSTORE_BASE64" | tr -d ' \t\r\n' | base64 -d --ignore-garbage > "$RUNNER_TEMP/upload.jks"
-            chmod 600 "$RUNNER_TEMP/upload.jks"
-            echo "ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
-            echo "Keystore materialized."
-          else
-            echo "::warning::Keystore secrets not fully set; will use debug keystore."
+          # This is a production Play Store publish — there's no legitimate reason to
+          # ship a debug-signed build here, so a missing/bad keystore secret must fail
+          # loudly and immediately rather than silently falling back to the debug
+          # keystore (which Play would reject anyway, just after a wasted ~15min build).
+          if [ -z "${ANDROID_CI_KEYSTORE_BASE64:-}" ] \
+             || [ -z "${ANDROID_CI_KEYSTORE_PASSWORD:-}" ] \
+             || [ -z "${ANDROID_CI_KEY_ALIAS:-}" ] \
+             || [ -z "${ANDROID_CI_KEY_PASSWORD:-}" ]; then
+            echo "::error::Keystore secrets are not fully set (need ANDROID_CI_KEYSTORE_BASE64, ANDROID_CI_KEYSTORE_PASSWORD, ANDROID_CI_KEY_ALIAS, ANDROID_CI_KEY_PASSWORD)."
+            exit 1
           fi
+          printf '%s' "$ANDROID_CI_KEYSTORE_BASE64" | tr -d ' \t\r\n' | base64 -d --ignore-garbage > "$RUNNER_TEMP/upload.jks"
+          chmod 600 "$RUNNER_TEMP/upload.jks"
+          if ! keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$ANDROID_CI_KEYSTORE_PASSWORD" -alias "$ANDROID_CI_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::Decoded keystore is invalid, or the alias/password don't match it. Check ANDROID_CI_KEYSTORE_BASE64/ANDROID_CI_KEY_ALIAS/ANDROID_CI_KEYSTORE_PASSWORD."
+            exit 1
+          fi
+          echo "ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          echo "Keystore materialized and verified."
 
       - name: Load AdMob IDs
         env:
@@ -160,6 +168,19 @@ jobs:
           GH_REPO_OWNER: ${{ vars.GH_REPO_OWNER }}
           GH_REPO_NAME: ${{ vars.GH_REPO_NAME }}
         run: |
+          # Unlike the ADMOB_* secrets above, these previously had no presence
+          # check at all — a missing/deleted GH_PROXY_APP_SECRET would silently
+          # ship a production build with the in-app feedback tool permanently
+          # disabled and nothing in CI flagging it.
+          missing=()
+          [ -n "${GH_PROXY_BASE_URL:-}" ]  || missing+=(GH_PROXY_BASE_URL)
+          [ -n "${GH_PROXY_APP_SECRET:-}" ] || missing+=(GH_PROXY_APP_SECRET)
+          [ -n "${GH_REPO_OWNER:-}" ]      || missing+=(GH_REPO_OWNER)
+          [ -n "${GH_REPO_NAME:-}" ]       || missing+=(GH_REPO_NAME)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub Actions vars/secrets for the feedback proxy: ${missing[*]}."
+            exit 1
+          fi
           sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           {
             echo "admob.android_app_id=${ADMOB_ANDROID_APP_ID}"
@@ -218,12 +239,16 @@ jobs:
           fi
           # Play rejects "whatsnew" text over 500 chars per language; truncate defensively
           # regardless of source so this can never fail the publish step outright.
-          NOTES=$(printf '%s' "$NOTES" | cut -c1-497)
-          if [ "$(printf '%s' "$NOTES" | wc -c)" -ge 497 ]; then
-            NOTES="${NOTES}..."
-          fi
+          # `cut -c` is byte-oriented on this runner's locale and can split a multi-byte
+          # UTF-8 character (e.g. from a non-ASCII commit message in the git-log fallback
+          # above); truncate by Unicode code point in Node instead.
           mkdir -p distribution/whatsnew
-          printf '%s' "$NOTES" > distribution/whatsnew/whatsnew-en-US
+          NOTES="$NOTES" node -e '
+            const notes = process.env.NOTES ?? "";
+            const chars = Array.from(notes);
+            const truncated = chars.length > 497 ? chars.slice(0, 497).join("") + "..." : notes;
+            require("fs").writeFileSync("distribution/whatsnew/whatsnew-en-US", truncated);
+          '
           echo "Release notes:"
           cat distribution/whatsnew/whatsnew-en-US
 
