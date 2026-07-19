@@ -49,7 +49,7 @@
         "url": "https://chartmann1590.github.io/AI-Social/privacy-policy.html",
         "name": "Privacy Policy - AI Social",
         "inLanguage": "en-US",
-        "dateModified": "2026-05-07"
+        "dateModified": "2026-07-18"
       }
     </script>
   </head>
@@ -72,7 +72,7 @@
     </header>
     <main id="main" class="legal">
       <h1>Privacy Policy</h1>
-      <p class="meta">Last updated: May 7, 2026. Applies to the AI Social application and this website.</p>
+      <p class="meta">Last updated: July 18, 2026. Applies to the AI Social application and this website.</p>
       <p>
         This policy describes how the <strong>AI Social</strong> mobile application (the App) and the promotional
         website hosted on GitHub Pages (the Site) handle information. AI Social is an open-source project; the canonical
@@ -81,7 +81,8 @@
       </p>
       <h2>Summary</h2>
       <ul>
-        <li>The App does <strong>not</strong> operate a first-party account system and does <strong>not</strong> collect analytics or crash reporting on behalf of the project maintainer.</li>
+        <li>The App does <strong>not</strong> operate a first-party account system and does <strong>not</strong> send data to a project-operated backend.</li>
+        <li>The App integrates <strong>Google Firebase</strong> services: <strong>Firebase Analytics</strong> (aggregated usage metrics and app_open events), <strong>Firebase Crashlytics</strong> (unhandled error and crash reporting), and <strong>Firebase Performance Monitoring</strong> (app performance traces). These are collected by Google under their privacy policy and used to improve app stability and understand usage patterns.</li>
         <li>The App displays ads through <strong>Google AdMob</strong>. The Google Mobile Ads SDK may collect and share device, interaction, diagnostic, IP address, and advertising identifier data for ads, analytics, and fraud prevention.</li>
         <li>When you use <strong>remote</strong> or <strong>hybrid</strong> mode and supply an Ollama server URL, prompts for generation are sent to <strong>that server only</strong>, under your control.</li>
         <li>When you use <strong>on-device</strong> mode on a supported Android build, inference runs locally; prompts are not sent to the maintainer infrastructure.</li>
@@ -108,10 +109,20 @@
       </p>
       <h2>Data collection (App)</h2>
       <p>
-        AI Social does not collect or transmit personal data or analytics from the device to a project-operated backend.
-        There is no sign-in, no user identifier assigned by the App itself, and no central AI Social server. The App does
-        include the Google Mobile Ads SDK for AdMob advertising, and that SDK may collect and share data as described in
-        the advertising section below.
+        AI Social does not transmit personal data to a project-operated backend. There is no sign-in, no user identifier
+        assigned by the App itself, and no central AI Social server. However, the App integrates several Google services
+        that collect data under their own policies:
+      </p>
+      <ul>
+        <li><strong>Firebase Analytics</strong> — collects aggregated usage metrics such as app opens and screen views. This data is used to understand which features are used most and to guide development priorities.</li>
+        <li><strong>Firebase Crashlytics</strong> — captures unhandled JavaScript and native crashes so the maintainer can diagnose and fix stability issues. Crash reports may include device model, OS version, and the stack trace at the time of the error.</li>
+        <li><strong>Firebase Performance Monitoring</strong> — collects performance traces (e.g., app startup time, screen rendering latency) to help identify slowdowns.</li>
+        <li><strong>Google AdMob</strong> — the Google Mobile Ads SDK collects and shares data as described in the advertising section below.</li>
+      </ul>
+      <p>
+        Firebase and AdMob data is sent directly to Google. The project maintainer accesses aggregated analytics and
+        crash reports through the Firebase Console. No personal identifiers are intentionally collected beyond what the
+        SDKs gather automatically.
       </p>
       <h2>Advertising</h2>
       <p>
@@ -135,18 +146,22 @@
       <p>Depending on features you use, the App may contact:</p>
       <ul>
         <li>
-          <strong>Google AdMob / Google Mobile Ads SDK</strong> - to load and measure ads, including banner,
-          interstitial, native, and rewarded ad formats.
+          <strong>Google Firebase</strong> (firebase.googleapis.com, crashlytics.com, firebaseperf.googleapis.com) — for
+          Analytics, Crashlytics, and Performance Monitoring. Data is sent automatically on app start and during use.
         </li>
         <li>
-          <strong>Hugging Face</strong> (huggingface.co and related CDN hosts such as cas-bridge.xethub.hf.co) - only when
+          <strong>Google AdMob / Google Mobile Ads SDK</strong> (googleads.g.doubleclick.net and related hosts) — to load
+          and measure ads, including banner, interstitial, native, and rewarded ad formats.
+        </li>
+        <li>
+          <strong>Hugging Face</strong> (huggingface.co and related CDN hosts such as cas-bridge.xethub.hf.co) — only when
           you explicitly start a model download from the Models screen.
         </li>
         <li>
-          <strong>DiceBear</strong> (api.dicebear.com) - to fetch generated avatar artwork used as placeholders in synthetic posts and comments.
+          <strong>DiceBear</strong> (api.dicebear.com) — to fetch generated avatar artwork used as placeholders in synthetic posts and comments.
         </li>
         <li>
-          <strong>Your Ollama server</strong> - only when Remote or Hybrid mode is enabled and you have entered a server URL.
+          <strong>Your Ollama server</strong> — only when Remote or Hybrid mode is enabled and you have entered a server URL.
         </li>
       </ul>
       <p>Review each provider privacy policy if you need enterprise or compliance guarantees.</p>
@@ -158,10 +173,10 @@
       </ul>
       <h2>Permissions (Android)</h2>
       <p>
-        The App requests <strong>INTERNET</strong> for AdMob ads, optional model downloads, and optional Ollama access.
-        The Google Mobile Ads SDK may also use the Android advertising ID where available. The App does not require
-        camera, contacts, location, microphone, or broad storage permissions for its core functionality as documented in
-        the repository.
+        The App requests <strong>INTERNET</strong> for Firebase services, AdMob ads, optional model downloads, and
+        optional Ollama access. The Google Mobile Ads SDK may also use the Android advertising ID where available.
+        The App does not require camera, contacts, location, microphone, or broad storage permissions for its core
+        functionality as documented in the repository.
       </p>
       <h2>This website (GitHub Pages)</h2>
       <p>

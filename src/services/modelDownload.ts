@@ -14,12 +14,6 @@ const MODEL_SUBDIR = 'llm-models';
 
 const HF_HOST = 'huggingface.co';
 
-function huggingFaceDownloadHeaders(_downloadUrl: string): Record<string, string> {
-  // HF's Xet CDN redirect is pre-signed and rejects requests with extra Referer/UA headers.
-  // Keep the header set empty; OkHttp's default UA passes through cleanly.
-  return {};
-}
-
 function withHuggingFaceDownloadQuery(url: string): string {
   try {
     const u = new URL(url);
@@ -208,42 +202,6 @@ export type DownloadProgress = {
   totalBytesExpectedToWrite: number;
 };
 
-/**
- * Resolve HF's 302 redirect to the Xet CDN URL on the JS side (manual redirect),
- * so the native downloader gets the final pre-signed URL directly. This avoids
- * redirect-handling bugs in expo-file-system's OkHttp configuration that were
- * causing the download to hang at 0 bytes for `.litertlm` files.
- */
-async function resolveHuggingFaceRedirect(
-  url: string,
-  onStep?: (msg: string) => void,
-): Promise<string> {
-  // HF's Xet CDN pre-signs URLs per HTTP method — HEAD against the signed URL
-  // hangs on some devices. Use GET with a Range: 0-0 header to fetch a single
-  // byte, which forces OkHttp to resolve the redirect chain but returns instantly.
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-  try {
-    onStep?.('probing redirect (1-byte GET)');
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { Range: 'bytes=0-0' },
-      redirect: 'follow',
-      signal: controller.signal,
-    });
-    onStep?.(`probe ${res.status}`);
-    if (res.url && res.url !== url) {
-      onStep?.(`→ ${res.url.slice(0, 70)}`);
-      return res.url;
-    }
-  } catch (e) {
-    onStep?.(`probe failed: ${e instanceof Error ? e.message : String(e)}`);
-  } finally {
-    clearTimeout(timeout);
-  }
-  return url;
-}
-
 export async function downloadModelFile(
   downloadUrl: string,
   filename: string,
@@ -272,14 +230,14 @@ export async function downloadModelFile(
     : undefined;
 
   const withQuery = withHuggingFaceDownloadQuery(downloadUrl);
-  onStatus?.('resolving HF redirect');
-  const resolvedUrl = await resolveHuggingFaceRedirect(withQuery, onStatus);
-  const headers = huggingFaceDownloadHeaders(resolvedUrl);
   onStatus?.('starting native download');
 
-  // Native downloader uses HttpURLConnection with a 120s read timeout — HF's
-  // Xet CDN is slow to start streaming large files and trips OkHttp's 10s
-  // default in expo-file-system.
+  // Native downloader uses HttpURLConnection with a 120s read timeout (avoids
+  // OkHttp's 10s default in expo-file-system) and follows redirects itself,
+  // including HF's redirect to its Xet CDN. Resolving that redirect ahead of
+  // time on the JS side (via a probing fetch) was removed: it consumed the
+  // CDN's single-use pre-signed URL before the native downloader could use it,
+  // causing the real download to fail with HTTP 403.
   if (Platform.OS !== 'android' || !NativeLLM) {
     throw new Error('Native downloader is only available on Android dev/release builds.');
   }
@@ -300,7 +258,7 @@ export async function downloadModelFile(
 
   let result: { uri: string; status?: number };
   try {
-    const returnedPath = await NativeLLM.downloadFile(resolvedUrl, destPath);
+    const returnedPath = await NativeLLM.downloadFile(withQuery, destPath);
     result = { uri: `file://${returnedPath}`, status: 200 };
   } finally {
     sub.remove();

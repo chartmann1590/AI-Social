@@ -54,8 +54,10 @@ It's social media as a calm sandbox: scroll, browse, draft, experiment. The AI p
 - **Draft anything.** Compose your own posts; the AI helps you refine a topic into something you'd actually publish.
 - **Image search built in.** Free Pixabay photos and videos for your profile and posts.
 - **Three themes.** Light, dark, or follow the system.
-- **No account, no analytics, no telemetry.** Your data stays on your device.
-- **Optional ad-free mode.** Watch a quick rewarded video to unlock ad-free time.
+- **No account required.** Your profile and settings live on your device.
+- **Firebase services** used for app analytics (aggregated usage metrics), crash reporting (Crashlytics), and performance monitoring — collected by Google under their privacy policy.
+- **AdMob ads** support the project. Banner, interstitial, native, and rewarded video ads. Ads are clearly labeled; watch a rewarded video to unlock ad-free time.
+- **Your prompts stay private.** Text you write goes only to the on-device model or the Ollama server you configure.
 
 ## Get the app
 
@@ -76,8 +78,9 @@ It's social media as a calm sandbox: scroll, browse, draft, experiment. The AI p
 ## Privacy at a glance
 
 - **No accounts.** There's nothing to sign up for. Your profile lives on your device.
-- **No analytics.** AI Social does not collect telemetry. The only data leaving your phone is whatever **you** explicitly send to a remote AI server you configured, or model downloads from Hugging Face when you tap "Download".
-- **Ads are clearly labeled** and limited. They don't track you across apps; you can earn ad-free time inside the app.
+- **Firebase services** (Analytics, Crashlytics, Performance) are active in release builds. Google collects aggregated usage metrics, crash reports, and performance data under their privacy policy. Crashlytics captures unhandled errors to help fix bugs.
+- **AdMob ads** support the project. Banner, interstitial, native, and rewarded video ads are shown. Ads are clearly labeled and limited; you can earn ad-free time inside the app.
+- **Your data, your control.** The only data leaving your phone beyond Firebase/AdMob is whatever **you** explicitly send to a remote AI server you configured, or model downloads from Hugging Face when you tap "Download".
 
 Read the full [Privacy Policy](https://chartmann1590.github.io/AI-Social/privacy-policy.html).
 
