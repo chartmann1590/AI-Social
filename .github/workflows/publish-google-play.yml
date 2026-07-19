@@ -1,3 +1,13 @@
+# Builds and publishes the native `android/` project directly — it is committed
+# to git and is the real source of truth, not a disposable `expo prebuild`
+# regeneration. Previously this workflow ran `expo prebuild --platform android`
+# fresh on every run; that produced a *different* build (wrong package name at
+# one point, different compose/config-plugin output) than the app actually
+# developed and tested locally, which Google Play rejected as incompatible
+# with the app's existing release ("does not allow any existing users to
+# upgrade"). If you change plugins/withFeedback.js, plugins/withLiteRtLlm.js,
+# or app.json's android config, regenerate android/ locally and commit the
+# result — this workflow will NOT pick up plugin changes automatically.
 name: Publish to Google Play
 
 on:
@@ -142,9 +152,6 @@ jobs:
           echo "version_code=${version_code}" >> "$GITHUB_OUTPUT"
           echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
           echo "Computed versionCode=${version_code} versionName=${version_name}"
-
-      - name: Expo prebuild (Android)
-        run: npx expo prebuild --platform android --no-install
 
       - name: Write android/local.properties
         env:
