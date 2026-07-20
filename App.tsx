@@ -9,6 +9,7 @@ import { useSettingsStore } from './src/store';
 import { AdMobBanner } from './src/ads/AdMobBanner';
 import { AdMobProvider } from './src/ads/AdMobProvider';
 import { initializeFirebase } from './src/services/firebase';
+import { WhatsNewDialog } from './src/components/WhatsNewDialog';
 
 export default function App() {
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function App() {
             <AppNavigator navigationTheme={navigationTheme} />
             <AdMobBanner />
             <StatusBar style={isDark ? 'light' : 'dark'} />
+            <WhatsNewDialog />
           </View>
         </AdMobProvider>
       </PaperProvider>

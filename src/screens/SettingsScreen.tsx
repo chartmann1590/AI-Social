@@ -13,6 +13,7 @@ import {
 import { useSettingsStore, useUserStore } from '../store';
 import { DEFAULT_CONFIG } from '../config';
 import type { LlmMode } from '../types';
+import { cancelDailyReminder, scheduleDailyReminder } from '../services/notifications';
 
 const nativeLiteRtPresent =
   Platform.OS === 'android' && NativeModules.AISocialLiteRtLlm != null;
@@ -32,6 +33,7 @@ export const SettingsScreen = () => {
     localMaxTokens,
     localTemperature,
     pixabayApiKey,
+    dailyReminderEnabled,
     setBaseUrl,
     setModel,
     setUseStreaming,
@@ -43,6 +45,7 @@ export const SettingsScreen = () => {
     setLocalMaxTokens,
     setLocalTemperature,
     setPixabayApiKey,
+    setDailyReminderEnabled,
   } = useSettingsStore();
 
   const [localReady, setLocalReady] = useState<boolean | null>(null);
@@ -115,6 +118,26 @@ export const SettingsScreen = () => {
         Support & Feedback (Bug Reporter)
       </Button>
 
+      <View style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <Text variant="bodyLarge">Daily reminder</Text>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            A once-a-day local notification — nothing is sent to a server.
+          </Text>
+        </View>
+        <Switch
+          value={dailyReminderEnabled}
+          onValueChange={async (enabled) => {
+            setDailyReminderEnabled(enabled);
+            if (enabled) {
+              const ok = await scheduleDailyReminder(19, 0);
+              if (!ok) setDailyReminderEnabled(false);
+            } else {
+              await cancelDailyReminder();
+            }
+          }}
+        />
+      </View>
 
       <Text variant="titleSmall" style={styles.sectionTitle}>
         LLM mode

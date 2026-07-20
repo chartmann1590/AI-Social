@@ -33,6 +33,33 @@ const ALLOWED_ROUTES: Route[] = [
 
 const GITHUB_API = 'https://api.github.com';
 
+// Labels the client is allowed to attach when creating an issue (used by the
+// in-app content-report feature). Anything else supplied by the client is
+// dropped server-side so a modified/decompiled app can't inject arbitrary
+// labels (e.g. spoofing priority/triage labels).
+const ALLOWED_ISSUE_LABELS = new Set([
+  'content-report',
+  'reason:offensive',
+  'reason:factually-wrong',
+  'reason:broken-garbled',
+  'reason:other',
+]);
+
+async function sanitizeCreateIssueBody(request: Request): Promise<string> {
+  const raw = await request.text();
+  try {
+    const payload = JSON.parse(raw) as Record<string, unknown>;
+    if (Array.isArray(payload.labels)) {
+      payload.labels = payload.labels.filter(
+        (label) => typeof label === 'string' && ALLOWED_ISSUE_LABELS.has(label),
+      );
+    }
+    return JSON.stringify(payload);
+  } catch {
+    return raw;
+  }
+}
+
 function timingSafeEqual(a: string, b: string): boolean {
   // Never branch on length: an early return there leaks the secret's length
   // via response timing. Compare over the longer length, padding the shorter
@@ -82,6 +109,14 @@ export default {
       return json({ message: 'Route not allowed' }, 403);
     }
 
+    const isCreateIssue = request.method === 'POST' && subPath === 'issues';
+    const body =
+      request.method === 'GET' || request.method === 'HEAD'
+        ? undefined
+        : isCreateIssue
+          ? await sanitizeCreateIssueBody(request)
+          : request.body;
+
     const upstreamUrl = `${GITHUB_API}${url.pathname}${url.search}`;
     const upstreamRequest = new Request(upstreamUrl, {
       method: request.method,
@@ -92,7 +127,7 @@ export default {
         'Content-Type': request.headers.get('content-type') ?? 'application/json',
         Authorization: `Bearer ${env.GITHUB_TOKEN}`,
       },
-      body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
+      body,
     });
 
     const upstreamResponse = await fetch(upstreamRequest);

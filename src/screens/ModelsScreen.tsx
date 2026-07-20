@@ -18,6 +18,7 @@ import {
 } from '../data/onDeviceModels';
 import { downloadModelFile, getLocalModelUriIfExists, uriToNativePath } from '../services/modelDownload';
 import { resetLocalLlmInitCache } from '../services/llm/providers/localLiteRt';
+import { notifyModelDownloadComplete } from '../services/notifications';
 
 const FAMILY_LABEL: Record<OnDeviceModelFamily, string> = {
   gemma4: 'Gemma 4',
@@ -80,6 +81,7 @@ export const ModelsScreen = () => {
       );
       await refreshInstalled();
       Alert.alert('Download complete', `${entry.filename} is saved. Tap "Use model" to load it.`);
+      notifyModelDownloadComplete(entry.filename).catch(() => {});
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       Alert.alert('Download failed', msg);

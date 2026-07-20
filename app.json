@@ -2,6 +2,7 @@
   "expo": {
     "plugins": [
       "expo-dev-client",
+      "expo-notifications",
       "./plugins/withLiteRtLlm.js",
       "./plugins/withFeedback.js"
     ],

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   Image,
   Linking,
@@ -11,8 +12,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Text, Avatar, IconButton, useTheme } from 'react-native-paper';
+import * as Sharing from 'expo-sharing';
+import type ViewShot from 'react-native-view-shot';
 import type { MediaAsset, Post } from '../types';
 import { formatAbsoluteForA11y, formatRelativeTime } from '../utils/time';
+import { ReportContentDialog } from './ReportContentDialog';
+import { ShareablePostCard } from './ShareablePostCard';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -118,6 +123,29 @@ interface PostCardProps {
 export const PostCard: React.FC<PostCardProps> = ({ post, onPress }) => {
   const theme = useTheme();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [reportVisible, setReportVisible] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const shareViewRef = useRef<ViewShot>(null);
+
+  const handleShare = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert('Sharing unavailable', 'Sharing isn’t supported on this device.');
+        return;
+      }
+      const uri = await shareViewRef.current?.capture?.();
+      if (!uri) throw new Error('Could not render a shareable image.');
+      await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share this post' });
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : 'Unknown error';
+      Alert.alert('Could not share this post', detail);
+    } finally {
+      setSharing(false);
+    }
+  };
 
   const media = post.media ?? [];
 
@@ -185,6 +213,19 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress }) => {
           <Text>{post.commentsCount}</Text>
         </View>
         <View style={{ flex: 1 }} />
+        <IconButton
+          icon="share-outline"
+          size={20}
+          onPress={handleShare}
+          disabled={sharing}
+          accessibilityLabel="Share this post as an image"
+        />
+        <IconButton
+          icon="flag-outline"
+          size={20}
+          onPress={() => setReportVisible(true)}
+          accessibilityLabel="Report this post"
+        />
       </Card.Actions>
 
       <MediaLightbox
@@ -193,6 +234,18 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress }) => {
         initialIndex={lightboxIndex ?? 0}
         onClose={() => setLightboxIndex(null)}
       />
+
+      <ReportContentDialog
+        visible={reportVisible}
+        onDismiss={() => setReportVisible(false)}
+        contentType="post"
+        content={post.content}
+      />
+
+      {/* Off-screen: exists only so react-native-view-shot has a branded card to capture. */}
+      <View style={styles.offscreen} pointerEvents="none">
+        <ShareablePostCard post={post} ref={shareViewRef} />
+      </View>
     </Card>
   );
 };
@@ -201,6 +254,12 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 10,
     marginHorizontal: 10,
+  },
+  offscreen: {
+    position: 'absolute',
+    top: 0,
+    left: -9999,
+    opacity: 0,
   },
   content: {
     marginTop: 5,

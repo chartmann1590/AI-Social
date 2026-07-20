@@ -4,6 +4,12 @@
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <!-- Required on API 33+ for expo-notifications' scheduleNotificationAsync to actually
+       post anything; requestPermissionsAsync() silently no-ops without this declared.
+       Deliberately not requesting SCHEDULE_EXACT_ALARM: it's a Play Store
+       policy-sensitive permission and our only use (an approximate daily reminder,
+       model-download-complete pings) doesn't need exact timing. -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>

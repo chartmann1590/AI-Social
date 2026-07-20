@@ -50,6 +50,8 @@ export interface AppSettings {
   localMaxTokens: number;
   localTemperature: number;
   pixabayApiKey: string;
+  /** Local daily notification nudging the user back to the feed. No server/push involved. */
+  dailyReminderEnabled: boolean;
 }
 
 export interface UserProfile {

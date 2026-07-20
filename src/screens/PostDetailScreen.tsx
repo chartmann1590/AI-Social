@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
-import { Text, TextInput, Button, ActivityIndicator, List, Avatar, Divider, useTheme } from 'react-native-paper';
+import { Text, TextInput, Button, ActivityIndicator, List, Avatar, Divider, IconButton, useTheme } from 'react-native-paper';
 import { useRoute } from '@react-navigation/native';
 import { Post, Comment } from '../types';
 import { PostCard } from '../components/PostCard';
+import { ReportContentDialog } from '../components/ReportContentDialog';
 import { LlmService } from '../services/llm';
 import { useFeedStore, usePostCommentsStore, usePostEngagementStore, useSettingsStore, useUserPostsStore } from '../store';
 
@@ -21,6 +22,7 @@ export const PostDetailScreen = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [reportedComment, setReportedComment] = useState<Comment | null>(null);
 
   const syncCommentCount = (nextCount: number) => {
     updateFeedPostCommentCount(post.id, nextCount);
@@ -117,6 +119,14 @@ export const PostDetailScreen = () => {
                   description={comment.content}
                   descriptionNumberOfLines={10}
                   left={props => <Avatar.Image size={40} source={{ uri: comment.author.avatar }} style={{marginRight: 10}} />}
+                  right={() => (
+                    <IconButton
+                      icon="flag-outline"
+                      size={18}
+                      onPress={() => setReportedComment(comment)}
+                      accessibilityLabel="Report this comment"
+                    />
+                  )}
                   titleStyle={{ fontWeight: 'bold' }}
                 />
                 <Divider />
@@ -151,6 +161,13 @@ export const PostDetailScreen = () => {
           style={[styles.input, { backgroundColor: theme.colors.surface }]}
         />
       </View>
+
+      <ReportContentDialog
+        visible={reportedComment !== null}
+        onDismiss={() => setReportedComment(null)}
+        contentType="comment"
+        content={reportedComment?.content ?? ''}
+      />
     </View>
   );
 };

@@ -10,6 +10,7 @@ function sortPostsByCreatedAtDesc(list: Post[]): Post[] {
 }
 import { DEFAULT_CONFIG } from '../config';
 import { AD_REWARD_DAILY_LIMIT, getLocalDayKey } from '../rewards/adFreeRewards';
+import { WHATS_NEW } from '../data/whatsNew';
 
 interface SettingsState extends AppSettings {
   setBaseUrl: (url: string) => void;
@@ -23,6 +24,7 @@ interface SettingsState extends AppSettings {
   setLocalMaxTokens: (n: number) => void;
   setLocalTemperature: (t: number) => void;
   setPixabayApiKey: (key: string) => void;
+  setDailyReminderEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -39,6 +41,7 @@ export const useSettingsStore = create<SettingsState>()(
       localMaxTokens: 1024,
       localTemperature: 0.8,
       pixabayApiKey: '',
+      dailyReminderEnabled: false,
       setBaseUrl: (baseUrl) => set({ baseUrl }),
       setModel: (model) => set({ model }),
       setUseStreaming: (useStreaming) => set({ useStreaming }),
@@ -50,15 +53,16 @@ export const useSettingsStore = create<SettingsState>()(
       setLocalMaxTokens: (localMaxTokens) => set({ localMaxTokens }),
       setLocalTemperature: (localTemperature) => set({ localTemperature }),
       setPixabayApiKey: (pixabayApiKey) => set({ pixabayApiKey }),
+      setDailyReminderEnabled: (dailyReminderEnabled) => set({ dailyReminderEnabled }),
     }),
     {
       name: 'settings-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 3,
+      version: 4,
       migrate: (persistedState: unknown, fromVersion: number) => {
-        const s = (persistedState ?? {}) as Record<string, unknown>;
+        let s = (persistedState ?? {}) as Record<string, unknown>;
         if (fromVersion < 3) {
-          return {
+          s = {
             ...s,
             llmMode: (s.llmMode as LlmMode | undefined) ?? 'local',
             enableRemoteFallback: (s.enableRemoteFallback as boolean | undefined) ?? true,
@@ -69,7 +73,10 @@ export const useSettingsStore = create<SettingsState>()(
             pixabayApiKey: (s.pixabayApiKey as string | undefined) ?? '',
           };
         }
-        return persistedState;
+        if (fromVersion < 4) {
+          s = { ...s, dailyReminderEnabled: (s.dailyReminderEnabled as boolean | undefined) ?? false };
+        }
+        return s;
       },
     },
   ),
@@ -102,10 +109,17 @@ export const useUserStore = create<UserState>()(
         set((state) => ({ profile: { ...state.profile, ...profile } })),
       setOnboardingComplete: (onboardingComplete) => {
         const existing = get().joinedAt;
+        const isFirstCompletion = onboardingComplete && !existing;
         set({
           onboardingComplete,
-          joinedAt: onboardingComplete && !existing ? Date.now() : existing,
+          joinedAt: isFirstCompletion ? Date.now() : existing,
         });
+        if (isFirstCompletion) {
+          // Baseline "what's new" to the current entry so a brand-new install never
+          // sees a changelog for the version it just installed with.
+          const latest = WHATS_NEW[0];
+          if (latest) useWhatsNewStore.getState().markSeen(latest.id);
+        }
       },
       resetOnboarding: () =>
         set({ onboardingComplete: false, profile: EMPTY_PROFILE, joinedAt: 0 }),
@@ -430,3 +444,35 @@ export const usePostCommentsStore = create<PostCommentsState>()(
     },
   ),
 );
+
+interface WhatsNewState {
+  /** id of the newest WHATS_NEW entry the user has already dismissed, or null if never shown. */
+  lastSeenId: string | null;
+  markSeen: (id: string) => void;
+}
+
+export const useWhatsNewStore = create<WhatsNewState>()(
+  persist(
+    (set) => ({
+      lastSeenId: null,
+      markSeen: (id) => set({ lastSeenId: id }),
+    }),
+    {
+      name: 'whats-new-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+    },
+  ),
+);
+
+/**
+ * True once there's a WHATS_NEW entry the user hasn't dismissed. `lastSeenId` starts
+ * `null` for everyone; onboarding completion immediately marks the current latest
+ * entry as seen (see useUserStore.setOnboardingComplete) so brand-new installs never
+ * see a "what's new" for the version they just installed — only existing users
+ * (whose lastSeenId predates the new entry, including previously-null) see it.
+ */
+export function hasUnseenWhatsNew(lastSeenId: string | null): boolean {
+  const latest = WHATS_NEW[0];
+  return latest != null && lastSeenId !== latest.id;
+}

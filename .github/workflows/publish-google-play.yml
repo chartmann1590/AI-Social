@@ -8,6 +8,18 @@
 # upgrade"). If you change plugins/withFeedback.js, plugins/withLiteRtLlm.js,
 # or app.json's android config, regenerate android/ locally and commit the
 # result — this workflow will NOT pick up plugin changes automatically.
+#
+# Regenerating (`npx expo prebuild --platform android`) also silently overwrites
+# some hand-maintained parts of android/ that no plugin owns — checked so far:
+# android/app/build.gradle's versionCode (must stay
+# `System.getenv('ANDROID_VERSION_CODE')?.toInteger() ?: 7`, not a literal — this
+# workflow always sets that env var, but a stale literal would eventually collide
+# with an already-published versionCode and get the release rejected), and the
+# AdMob DELAY_APP_MEASUREMENT_INIT meta-data in AndroidManifest.xml (make sure
+# android/local.properties has `admob.delay_app_measurement_init=false` set before
+# regenerating, or it silently flips to the plugin's own default). Diff
+# `git diff android/` after any regeneration and look for unexpected changes
+# beyond what you intended, not just the ones you were expecting.
 name: Publish to Google Play
 
 on:
