@@ -24,5 +24,12 @@ allprojects {
   }
 }
 
+// Override compileSdkVersion/targetSdkVersion (Expo's ExpoRootProjectPlugin only sets these
+// via extra.setIfNotExist, so defining them here beforehand takes precedence).
+ext {
+  compileSdkVersion = 36
+  targetSdkVersion = 36
+}
+
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"
