@@ -127,7 +127,11 @@ class LiteRtLlmModule(reactContext: ReactApplicationContext) :
         lastModelPath = path
         lastMaxTokens = maxTokens
         promise.resolve(null)
-      } catch (e: Exception) {
+      } catch (e: Throwable) {
+        // Catch Throwable (not Exception): loading litertlm_jni throws
+        // UnsatisfiedLinkError (an Error) on devices missing the native ABI.
+        // Convert to a promise rejection so JS degrades gracefully instead of
+        // crashing the app. (Crashlytics issue #7)
         promise.reject("E_INIT", e.message, e)
       }
     }
