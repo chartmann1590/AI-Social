@@ -47,6 +47,16 @@ class LiteRtLlmModule(reactContext: ReactApplicationContext) :
     return Backend.MEDIAPIPE
   }
 
+  /**
+   * com.google.ai.edge.litertlm:litertlm-android only ships native binaries for
+   * arm64-v8a and x86_64 (verified by inspecting the AAR's jni/ directory) -
+   * unlike com.google.mediapipe:tasks-genai (the MEDIAPIPE backend, .task
+   * files), which also covers armeabi-v7a and x86. Only gate the LITERT_LM
+   * (.litertlm) path; MediaPipe's broader ABI coverage is unaffected.
+   */
+  private fun isLiteRtLmAbiSupported(): Boolean =
+    android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" || it == "x86_64" }
+
   private fun closeAll() {
     try { mpInference?.close() } catch (_: Throwable) {}
     mpInference = null
@@ -85,6 +95,14 @@ class LiteRtLlmModule(reactContext: ReactApplicationContext) :
             mpInference = LlmInference.createFromOptions(reactApplicationContext, options)
           }
           Backend.LITERT_LM -> {
+            if (!isLiteRtLmAbiSupported()) {
+              promise.reject(
+                "E_UNSUPPORTED_ABI",
+                "On-device AI (.litertlm) isn't supported on this device's processor.",
+                null,
+              )
+              return@execute
+            }
             val cfg = EngineConfig(modelPath = path)
             val engine = Engine(cfg)
             engine.initialize()
@@ -143,7 +161,11 @@ class LiteRtLlmModule(reactContext: ReactApplicationContext) :
             promise.reject("E_GENERATE", "LLM not initialized", null)
           }
         }
-      } catch (e: Exception) {
+      } catch (e: Throwable) {
+        // Catch Throwable, not just Exception: native inference calls can still
+        // throw a LinkageError-family Error even after a successful init (e.g.
+        // a lazily-loaded native symbol), and Promise rejection is how this
+        // degrades gracefully for JS instead of crashing the app.
         promise.reject("E_GENERATE", e.message, e)
       }
     }
