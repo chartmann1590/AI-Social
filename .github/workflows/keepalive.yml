@@ -1,0 +1,38 @@
+# Keepalive - prevents GitHub from auto-disabling scheduled workflows
+#
+# GitHub automatically disables scheduled workflows in repositories with no
+# pushes/commits for 60 days. This monthly job appends the current UTC
+# timestamp to .github/last-activity.txt and pushes it back to the default
+# branch, so the repository can never go 60 days without a commit. Free,
+# GitHub-native, and fully automated.
+
+name: Keepalive
+
+on:
+  schedule:
+    # 00:00 UTC on the 1st of every month
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out default branch
+        uses: actions/checkout@v4
+
+      - name: Record activity timestamp
+        run: |
+          mkdir -p .github
+          echo "Last automated activity: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> .github/last-activity.txt
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/last-activity.txt
+          git diff --cached --quiet || git commit -m "chore: monthly keepalive activity timestamp"
+          git push
