@@ -162,6 +162,20 @@ jobs:
       - name: Expo prebuild (Android)
         run: npx expo prebuild --platform android --no-install
 
+      - name: Materialize google-services.json
+        # The release build applies the Google Services plugin, which needs this file;
+        # it is gitignored, so write it from the same secret publish-google-play.yml uses.
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GOOGLE_SERVICES_JSON}" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON secret is empty or missing."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          python3 -c "import json;json.load(open('android/app/google-services.json'))"
+
       - name: Write android/local.properties (AdMob + sdk.dir)
         run: |
           set -euo pipefail
