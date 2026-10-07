@@ -47,5 +47,8 @@
     "ts-jest": "^29.4.9",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "@grpc/grpc-js": "1.14.5"
+  }
 }
