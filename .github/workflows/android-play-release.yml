@@ -176,6 +176,17 @@ jobs:
           printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
           python3 -c "import json;json.load(open('android/app/google-services.json'))"
 
+      - name: Raise Gradle heap (release packaging OOMs at the prebuild default)
+        run: |
+          set -euo pipefail
+          props=android/gradle.properties
+          if grep -q '^org.gradle.jvmargs=' "$props"; then
+            sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8/' "$props"
+          else
+            echo 'org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8' >> "$props"
+          fi
+          grep '^org.gradle.jvmargs=' "$props"
+
       - name: Write android/local.properties (AdMob + sdk.dir)
         run: |
           set -euo pipefail
