@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { useSettingsStore, useUserStore } from '../../store';
 import { LlmService } from '../../services/llm';
+import { TranslatedText } from '../../components/TranslatedText';
 import { avatarUrl } from './avatarUtils';
 import type { OnboardingStackParamList } from './types';
 
@@ -111,7 +112,7 @@ export const TourScreen = ({ navigation }: Props) => {
       contentContainerStyle={styles.content}
     >
       <Text variant="labelMedium" style={{ color: theme.colors.primary, marginBottom: 4 }}>
-        STEP 3 OF 3
+        STEP 4 OF 4
       </Text>
       <Text variant="headlineMedium" style={styles.title}>
         Say hi to your model
@@ -153,7 +154,7 @@ export const TourScreen = ({ navigation }: Props) => {
             ) : (
               <Animated.View style={{ opacity: fade }}>
                 <Text variant="bodyMedium" style={{ lineHeight: 22 }}>
-                  {tour}
+                  <TranslatedText>{tour}</TranslatedText>
                 </Text>
                 {usedFallback && (
                   <Text variant="labelSmall" style={{ marginTop: 10, opacity: 0.6, fontStyle: 'italic' }}>

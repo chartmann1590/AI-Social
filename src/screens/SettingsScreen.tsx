@@ -14,6 +14,7 @@ import { useSettingsStore, useUserStore } from '../store';
 import { DEFAULT_CONFIG } from '../config';
 import type { LlmMode } from '../types';
 import { cancelDailyReminder, scheduleDailyReminder } from '../services/notifications';
+import { SettingsTranslationSection } from './SettingsTranslationSection';
 
 const nativeLiteRtPresent =
   Platform.OS === 'android' && NativeModules.AISocialLiteRtLlm != null;
@@ -138,6 +139,8 @@ export const SettingsScreen = () => {
           }}
         />
       </View>
+
+      <SettingsTranslationSection />
 
       <Text variant="titleSmall" style={styles.sectionTitle}>
         LLM mode

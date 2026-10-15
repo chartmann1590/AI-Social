@@ -19,6 +19,7 @@ import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { ProfileScreen as OnboardingProfileScreen } from '../screens/onboarding/ProfileScreen';
 import { ModelSetupScreen } from '../screens/onboarding/ModelSetupScreen';
+import { LanguageScreen } from '../screens/onboarding/LanguageScreen';
 import { TourScreen } from '../screens/onboarding/TourScreen';
 import { avatarUrl } from '../screens/onboarding/avatarUtils';
 import { useSettingsStore, useUserStore } from '../store';
@@ -111,6 +112,7 @@ function OnboardingNavigator({
     >
       <OnboardingStack.Screen name="Welcome" component={WelcomeScreen} />
       <OnboardingStack.Screen name="Profile" component={OnboardingProfileScreen} options={{ headerShown: true, title: '' }} />
+      <OnboardingStack.Screen name="Language" component={LanguageScreen} options={{ headerShown: true, title: '' }} />
       <OnboardingStack.Screen name="ModelSetup" component={ModelSetupScreen} options={{ headerShown: true, title: '' }} />
       <OnboardingStack.Screen name="Tour" component={TourScreen} options={{ headerShown: true, title: '' }} />
     </OnboardingStack.Navigator>

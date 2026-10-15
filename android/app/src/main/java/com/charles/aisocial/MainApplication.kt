@@ -21,6 +21,9 @@ import com.charles.aisocial.litert.LiteRtLlmPackage
 // @generated begin aisocial-feedback-import - expo prebuild (DO NOT MODIFY) sync-ccb3e05499420a78983617bde14e736eae7558e6
 import com.charles.aisocial.feedback.FeedbackPackage
 // @generated end aisocial-feedback-import
+// @generated begin aisocial-mlkit-translate-import - expo prebuild (DO NOT MODIFY) sync-8d1cbceef636add023d2af35b5524331482c5d4c
+import com.charles.aisocial.translate.TranslatePackage
+// @generated end aisocial-mlkit-translate-import
 
 class MainApplication : Application(), ReactApplication {
 
@@ -35,6 +38,9 @@ class MainApplication : Application(), ReactApplication {
 // @generated begin aisocial-feedback-pkg - expo prebuild (DO NOT MODIFY) sync-36ff24b8a238c48b8ece334036cb17a375196ce3
               add(FeedbackPackage())
 // @generated end aisocial-feedback-pkg
+// @generated begin aisocial-mlkit-translate-pkg - expo prebuild (DO NOT MODIFY) sync-3ea3215c862016f05c0a17deb985978a1cc99664
+              add(TranslatePackage())
+// @generated end aisocial-mlkit-translate-pkg
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
             }

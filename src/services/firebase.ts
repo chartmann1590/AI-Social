@@ -1,6 +1,6 @@
 import { getCrashlytics, recordError, log as crashlyticsLog, setCrashlyticsCollectionEnabled } from '@react-native-firebase/crashlytics';
 import { getAnalytics, logEvent, setAnalyticsCollectionEnabled } from '@react-native-firebase/analytics';
-import { getPerformance } from '@react-native-firebase/perf';
+import { getPerformance, trace } from '@react-native-firebase/perf';
 import { AppState, type AppStateStatus } from 'react-native';
 
 let initialized = false;
@@ -41,6 +41,35 @@ function setupAppStateTracking(
     }
   };
   AppState.addEventListener('change', handleAppState);
+}
+
+/**
+ * Starts a Firebase Performance trace for measuring startup/feature timing.
+ * Returns a stop function that also records the elapsed duration in ms.
+ */
+export async function startPerfTrace(name: string) {
+  try {
+    const perf = getPerformance();
+    const t = trace(perf, name);
+    const startMs = Date.now();
+    await t.start();
+    return {
+      stop: async () => {
+        try {
+          t.incrementMetric('duration_ms', Date.now() - startMs);
+          await t.stop();
+        } catch {
+          // best-effort; never crash the app for a perf trace.
+        }
+      },
+      trace: t,
+    };
+  } catch {
+    return {
+      stop: async () => {},
+      trace: null,
+    };
+  }
 }
 
 export { getCrashlytics, getAnalytics, getPerformance, logEvent, recordError, crashlyticsLog };

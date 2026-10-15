@@ -5,6 +5,7 @@ apply plugin: "org.jetbrains.kotlin.plugin.serialization"
 apply plugin: "com.facebook.react"
 apply plugin: "com.google.gms.google-services"
 apply plugin: "com.google.firebase.crashlytics"
+apply plugin: "com.google.firebase.perf"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -193,6 +194,8 @@ android {
 }
 
 dependencies {
+    implementation 'com.google.mlkit:translate:17.0.3'
+    implementation 'com.google.mlkit:language-id:17.0.6'
     implementation 'com.google.ai.edge.litertlm:litertlm-android:0.10.0'
     implementation 'com.google.mediapipe:tasks-genai:0.10.27'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'

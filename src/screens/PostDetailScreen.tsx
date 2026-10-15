@@ -5,6 +5,7 @@ import { useRoute } from '@react-navigation/native';
 import { Post, Comment } from '../types';
 import { PostCard } from '../components/PostCard';
 import { ReportContentDialog } from '../components/ReportContentDialog';
+import { TranslatedText } from '../components/TranslatedText';
 import { LlmService } from '../services/llm';
 import { useFeedStore, usePostCommentsStore, usePostEngagementStore, useSettingsStore, useUserPostsStore } from '../store';
 
@@ -116,8 +117,7 @@ export const PostDetailScreen = () => {
               <React.Fragment key={comment.id}>
                 <List.Item
                   title={comment.author.name}
-                  description={comment.content}
-                  descriptionNumberOfLines={10}
+                  description={<TranslatedText numberOfLines={10}>{comment.content}</TranslatedText>}
                   left={props => <Avatar.Image size={40} source={{ uri: comment.author.avatar }} style={{marginRight: 10}} />}
                   right={() => (
                     <IconButton

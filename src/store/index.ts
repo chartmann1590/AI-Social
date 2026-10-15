@@ -25,6 +25,8 @@ interface SettingsState extends AppSettings {
   setLocalTemperature: (t: number) => void;
   setPixabayApiKey: (key: string) => void;
   setDailyReminderEnabled: (enabled: boolean) => void;
+  setTranslateEnabled: (enabled: boolean) => void;
+  setTranslationLanguage: (language: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -42,6 +44,8 @@ export const useSettingsStore = create<SettingsState>()(
       localTemperature: 0.8,
       pixabayApiKey: '',
       dailyReminderEnabled: false,
+      translateEnabled: false,
+      translationLanguage: 'en',
       setBaseUrl: (baseUrl) => set({ baseUrl }),
       setModel: (model) => set({ model }),
       setUseStreaming: (useStreaming) => set({ useStreaming }),
@@ -54,11 +58,13 @@ export const useSettingsStore = create<SettingsState>()(
       setLocalTemperature: (localTemperature) => set({ localTemperature }),
       setPixabayApiKey: (pixabayApiKey) => set({ pixabayApiKey }),
       setDailyReminderEnabled: (dailyReminderEnabled) => set({ dailyReminderEnabled }),
+      setTranslateEnabled: (translateEnabled) => set({ translateEnabled }),
+      setTranslationLanguage: (translationLanguage) => set({ translationLanguage }),
     }),
     {
       name: 'settings-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 4,
+      version: 5,
       migrate: (persistedState: unknown, fromVersion: number) => {
         let s = (persistedState ?? {}) as Record<string, unknown>;
         if (fromVersion < 3) {
@@ -75,6 +81,13 @@ export const useSettingsStore = create<SettingsState>()(
         }
         if (fromVersion < 4) {
           s = { ...s, dailyReminderEnabled: (s.dailyReminderEnabled as boolean | undefined) ?? false };
+        }
+        if (fromVersion < 5) {
+          s = {
+            ...s,
+            translateEnabled: (s.translateEnabled as boolean | undefined) ?? false,
+            translationLanguage: (s.translationLanguage as string | undefined) ?? 'en',
+          };
         }
         return s;
       },

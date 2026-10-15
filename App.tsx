@@ -8,13 +8,27 @@ import { AppNavigator } from './src/navigation';
 import { useSettingsStore } from './src/store';
 import { AdMobBanner } from './src/ads/AdMobBanner';
 import { AdMobProvider } from './src/ads/AdMobProvider';
-import { initializeFirebase } from './src/services/firebase';
+import { initializeFirebase, startPerfTrace } from './src/services/firebase';
+import { refreshTranslationReady } from './src/services/translation';
 import { WhatsNewDialog } from './src/components/WhatsNewDialog';
 
 export default function App() {
+  const translationLanguage = useSettingsStore((s) => s.translationLanguage);
   useEffect(() => {
-    initializeFirebase();
-  }, []);
+    let stopped = false;
+    const boot = async () => {
+      const { stop } = await startPerfTrace('app_startup');
+      await initializeFirebase();
+      await refreshTranslationReady(translationLanguage);
+      if (!stopped) {
+        await stop();
+      }
+    };
+    boot();
+    return () => {
+      stopped = true;
+    };
+  }, [translationLanguage]);
   const colorScheme = useColorScheme();
   const themePreference = useSettingsStore((state) => state.themePreference);
 

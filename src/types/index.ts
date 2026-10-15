@@ -52,6 +52,10 @@ export interface AppSettings {
   pixabayApiKey: string;
   /** Local daily notification nudging the user back to the feed. No server/push involved. */
   dailyReminderEnabled: boolean;
+  /** Master switch for on-device ML Kit translation of app content. */
+  translateEnabled: boolean;
+  /** Target language tag for on-device translation (BCP-47, e.g. "es"). */
+  translationLanguage: string;
 }
 
 export interface UserProfile {

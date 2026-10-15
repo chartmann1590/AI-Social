@@ -273,7 +273,7 @@ export const ModelSetupScreen = ({ navigation }: Props) => {
       keyboardShouldPersistTaps="handled"
     >
       <Text variant="labelMedium" style={{ color: theme.colors.primary, marginBottom: 4 }}>
-        STEP 2 OF 3
+        STEP 3 OF 4
       </Text>
       <Text variant="headlineMedium" style={styles.title}>
         Bring your brain

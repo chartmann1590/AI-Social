@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { PostCard } from '../components/PostCard';
+import { TranslatedText } from '../components/TranslatedText';
 import { usePostCommentsStore, useUserPostsStore, useUserStore, useSettingsStore } from '../store';
 import { MediaAsset, Post } from '../types';
 import { avatarUrl } from './onboarding/avatarUtils';
@@ -298,7 +299,7 @@ export const ProfileScreen = () => {
 
         {bio ? (
           <Text variant="bodyMedium" style={styles.bio}>
-            {bio}
+            <TranslatedText>{bio}</TranslatedText>
           </Text>
         ) : (
           <Text
@@ -366,12 +367,12 @@ export const ProfileScreen = () => {
       <Text variant="titleSmall" style={styles.replyLabel}>
         Reply
       </Text>
-      <Text variant="bodyMedium">{item.content}</Text>
+      <Text variant="bodyMedium"><TranslatedText>{item.content}</TranslatedText></Text>
       <Text
         variant="bodySmall"
         style={[styles.replySub, { color: theme.colors.onSurfaceVariant }]}
       >
-        In reply to: {item.postPreview}
+        In reply to: <TranslatedText>{item.postPreview}</TranslatedText>
       </Text>
     </Pressable>
   );

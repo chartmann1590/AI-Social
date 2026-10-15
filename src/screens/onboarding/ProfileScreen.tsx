@@ -53,7 +53,7 @@ export const ProfileScreen = ({ navigation }: Props) => {
       avatarSeed: selectedSeed,
       bio: bio.trim(),
     });
-    navigation.navigate('ModelSetup');
+    navigation.navigate('Language');
   };
 
   const reshuffle = () => {
@@ -73,7 +73,7 @@ export const ProfileScreen = ({ navigation }: Props) => {
       keyboardShouldPersistTaps="handled"
     >
       <Text variant="labelMedium" style={{ color: theme.colors.primary, marginBottom: 4 }}>
-        STEP 1 OF 3
+        STEP 1 OF 4
       </Text>
       <Text variant="headlineMedium" style={styles.title}>
         Pick a vibe

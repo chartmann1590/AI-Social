@@ -18,6 +18,7 @@ import type { MediaAsset, Post } from '../types';
 import { formatAbsoluteForA11y, formatRelativeTime } from '../utils/time';
 import { ReportContentDialog } from './ReportContentDialog';
 import { ShareablePostCard } from './ShareablePostCard';
+import { TranslatedText } from './TranslatedText';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -171,7 +172,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress }) => {
           left={(props) => <Avatar.Image {...props} source={{ uri: post.author.avatar }} />}
         />
         <Card.Content>
-          <Text variant="bodyMedium" style={styles.content}>{post.content}</Text>
+          <TranslatedText variant="bodyMedium" style={styles.content}>{post.content}</TranslatedText>
         </Card.Content>
       </Pressable>
 
