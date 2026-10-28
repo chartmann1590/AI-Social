@@ -13,6 +13,7 @@ import { TextInput, Button, Text, useTheme, IconButton } from 'react-native-pape
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LlmService } from '../services/llm';
+import { buildSafeImagePrompt, checkImagePrompt } from '../services/imageSafety';
 import { useSettingsStore, useFeedStore, usePostEngagementStore, useUserStore, useUserPostsStore } from '../store';
 import { MediaAsset, Post } from '../types';
 import { avatarUrl } from './onboarding/avatarUtils';
@@ -87,8 +88,13 @@ export const ComposeScreen = () => {
     if (!info.exists) {
       throw new Error('Image model file not found. Re-download in Models or fix the path in Settings.');
     }
+    // Safety gate: runs BEFORE any network request. A blocked prompt
+    // throws here and never reaches the image provider (see
+    // src/services/imageSafety.ts). Allowed prompts go out with the
+    // provider's strict safe filter on, plus a safe framing suffix.
+    const safePrompt = buildSafeImagePrompt(trimmedPrompt);
     const seed = Math.floor(Math.random() * 1000000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(trimmedPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true`;
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=1024&height=1024&seed=${seed}&nologo=true&safe=true`;
     const res = await fetch(imageUrl);
     if (!res.ok) {
       throw new Error(`Image request failed (${res.status}). Try again in a moment.`);
@@ -153,6 +159,17 @@ export const ComposeScreen = () => {
   const handleAttachManualImage = () => {
     const uri = manualImageUrl.trim();
     if (!uri) return;
+    // Same screen as generated images, applied to the URL text: an
+    // obviously explicit URL cannot be attached as a post image.
+    // (Pixel-level inspection of a pasted URL is not possible here;
+    // posted images remain reportable via PostCard / PostDetail.)
+    if (!checkImagePrompt(uri).allowed) {
+      Alert.alert(
+        'Image blocked',
+        'That image URL looks like sexual or explicit content, which AI Social does not allow.',
+      );
+      return;
+    }
     setMedia((prev) => [
       ...prev,
       {
@@ -264,6 +281,14 @@ export const ComposeScreen = () => {
         >
           Generate Image
         </Button>
+        <Text
+          variant="bodySmall"
+          style={[styles.setupHint, { color: theme.colors.onSurfaceVariant }]}
+        >
+          AI images are filtered: sexual, nude, or explicit prompts are blocked before generation, and
+          generation uses the provider&apos;s strict safe filter. Posts can be reported from the feed or
+          post detail view.
+        </Text>
 
         {generatingImage && (
           <View
