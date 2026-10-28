@@ -1,3 +1,4 @@
+• Fixed AI image generation safety: sexual, nude, or explicit prompts are now blocked before generation, with the provider's strict safe filter on for allowed prompts.
 • Fixed on-device model downloads (Gemma 4, Gemma 3, Qwen, DeepSeek R1, Stable Diffusion) that were failing with a network error.
 • Fixed a startup crash affecting some devices.
 • Fixed the in-app "Support & Feedback" bug reporter.
