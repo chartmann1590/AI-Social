@@ -1,0 +1,208 @@
+# Builds a signed release APK of the app for distribution on alternative
+# (non-Play) Android stores such as Uptodown and APKPure, which take APKs
+# rather than AABs.
+#
+# Mirrors .github/workflows/publish-google-play.yml for all setup steps
+# (secrets, keystore, AdMob, google-services.json, version codes) so the APK
+# is signed with the exact same release key as the Play AAB — the only
+# difference is `./gradlew :app:assembleRelease` instead of `bundleRelease`,
+# and the Play upload step is omitted. Never ship a debug-signed build.
+name: Build release APK (alt stores)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_apk_build:
+        description: 'Type "build" to confirm you want a signed release APK built and uploaded as an artifact'
+        required: true
+        type: string
+
+concurrency:
+  group: release-apk-build
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-apk:
+    if: ${{ github.event.inputs.confirm_apk_build == 'build' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK extras
+        run: |
+          sdkmanager "build-tools;35.0.0" "ndk;28.2.13676358"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Ensure src/config.ts
+        run: |
+          if [ ! -f src/config.ts ]; then
+            cp src/config.example.ts src/config.ts
+          fi
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test:ci
+
+      - name: Materialize google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          mkdir -p android/app
+          echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+
+      - name: Materialize release keystore
+        env:
+          ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+        run: |
+          # A debug-signed APK would break future updates, so fail loudly
+          # instead of silently falling back to the debug keystore.
+          if [ -z "${ANDROID_CI_KEYSTORE_BASE64:-}" ] \
+             || [ -z "${ANDROID_CI_KEYSTORE_PASSWORD:-}" ] \
+             || [ -z "${ANDROID_CI_KEY_ALIAS:-}" ] \
+             || [ -z "${ANDROID_CI_KEY_PASSWORD:-}" ]; then
+            echo "::error::Keystore secrets are not fully set (need ANDROID_CI_KEYSTORE_BASE64, ANDROID_CI_KEYSTORE_PASSWORD, ANDROID_CI_KEY_ALIAS, ANDROID_CI_KEY_PASSWORD)."
+            exit 1
+          fi
+          printf '%s' "$ANDROID_CI_KEYSTORE_BASE64" | tr -d ' \t\r\n' | base64 -d --ignore-garbage > "$RUNNER_TEMP/upload.jks"
+          chmod 600 "$RUNNER_TEMP/upload.jks"
+          if ! keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$ANDROID_CI_KEYSTORE_PASSWORD" -alias "$ANDROID_CI_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::Decoded keystore is invalid, or the alias/password don't match it. Check ANDROID_CI_KEYSTORE_BASE64/ANDROID_CI_KEY_ALIAS/ANDROID_CI_KEYSTORE_PASSWORD."
+            exit 1
+          fi
+          echo "ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          echo "Keystore materialized and verified."
+
+      - name: Load AdMob IDs
+        env:
+          SEC_APP: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+          SEC_BANNER: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          SEC_INT: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+          SEC_NATIVE: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
+          SEC_REWARD: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
+          SEC_DELAY: ${{ secrets.ADMOB_DELAY_APP_MEASUREMENT_INIT }}
+          SEC_OPT_INIT: ${{ secrets.ADMOB_OPTIMIZE_INITIALIZATION }}
+          SEC_OPT_LOAD: ${{ secrets.ADMOB_OPTIMIZE_AD_LOADING }}
+        run: |
+          missing=()
+          [ -n "${SEC_APP:-}" ]    || missing+=(ADMOB_ANDROID_APP_ID)
+          [ -n "${SEC_BANNER:-}" ] || missing+=(ADMOB_BANNER_AD_UNIT_ID)
+          [ -n "${SEC_INT:-}" ]    || missing+=(ADMOB_INTERSTITIAL_AD_UNIT_ID)
+          [ -n "${SEC_NATIVE:-}" ] || missing+=(ADMOB_NATIVE_AD_UNIT_ID)
+          [ -n "${SEC_REWARD:-}" ] || missing+=(ADMOB_REWARDED_AD_UNIT_ID)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub Secrets: ${missing[*]}."
+            exit 1
+          fi
+          {
+            echo "ADMOB_ANDROID_APP_ID=${SEC_APP}"
+            echo "ADMOB_BANNER_AD_UNIT_ID=${SEC_BANNER}"
+            echo "ADMOB_INTERSTITIAL_AD_UNIT_ID=${SEC_INT}"
+            echo "ADMOB_NATIVE_AD_UNIT_ID=${SEC_NATIVE}"
+            echo "ADMOB_REWARDED_AD_UNIT_ID=${SEC_REWARD}"
+            echo "ADMOB_DELAY_APP_MEASUREMENT_INIT=${SEC_DELAY:-false}"
+            echo "ADMOB_OPTIMIZE_INITIALIZATION=${SEC_OPT_INIT:-true}"
+            echo "ADMOB_OPTIMIZE_AD_LOADING=${SEC_OPT_LOAD:-true}"
+          } >> "$GITHUB_ENV"
+
+      - name: Compute version codes
+        run: |
+          version_code="$(date -u +'%y%j%H%M')"
+          version_name="1.1.0.$(date -u +'%Y%m%d.%H%M')"
+          echo "ANDROID_VERSION_CODE=${version_code}" >> "$GITHUB_ENV"
+          echo "ANDROID_VERSION_NAME=${version_name}" >> "$GITHUB_ENV"
+          echo "Computed versionCode=${version_code} versionName=${version_name}"
+
+      - name: Write android/local.properties
+        env:
+          GH_PROXY_BASE_URL: ${{ vars.GH_PROXY_BASE_URL }}
+          GH_PROXY_APP_SECRET: ${{ secrets.GH_PROXY_APP_SECRET }}
+          GH_REPO_OWNER: ${{ vars.GH_REPO_OWNER }}
+          GH_REPO_NAME: ${{ vars.GH_REPO_NAME }}
+        run: |
+          missing=()
+          [ -n "${GH_PROXY_BASE_URL:-}" ]  || missing+=(GH_PROXY_BASE_URL)
+          [ -n "${GH_PROXY_APP_SECRET:-}" ] || missing+=(GH_PROXY_APP_SECRET)
+          [ -n "${GH_REPO_OWNER:-}" ]      || missing+=(GH_REPO_OWNER)
+          [ -n "${GH_REPO_NAME:-}" ]       || missing+=(GH_REPO_NAME)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub Actions vars/secrets for the feedback proxy: ${missing[*]}."
+            exit 1
+          fi
+          sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          {
+            echo "admob.android_app_id=${ADMOB_ANDROID_APP_ID}"
+            echo "admob.banner_ad_unit_id=${ADMOB_BANNER_AD_UNIT_ID}"
+            echo "admob.interstitial_ad_unit_id=${ADMOB_INTERSTITIAL_AD_UNIT_ID}"
+            echo "admob.native_ad_unit_id=${ADMOB_NATIVE_AD_UNIT_ID}"
+            echo "admob.rewarded_ad_unit_id=${ADMOB_REWARDED_AD_UNIT_ID}"
+            echo "admob.delay_app_measurement_init=${ADMOB_DELAY_APP_MEASUREMENT_INIT}"
+            echo "admob.optimize_initialization=${ADMOB_OPTIMIZE_INITIALIZATION}"
+            echo "admob.optimize_ad_loading=${ADMOB_OPTIMIZE_AD_LOADING}"
+            echo "github.proxy.base_url=${GH_PROXY_BASE_URL}"
+            echo "app.proxy.secret=${GH_PROXY_APP_SECRET}"
+            echo "github.repo.owner=${GH_REPO_OWNER}"
+            echo "github.repo.name=${GH_REPO_NAME}"
+            echo "sdk.dir=${sdk}"
+          } > android/local.properties
+
+      - name: Build release APK
+        working-directory: android
+        env:
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+          GH_PROXY_BASE_URL: ${{ vars.GH_PROXY_BASE_URL }}
+          GH_PROXY_APP_SECRET: ${{ secrets.GH_PROXY_APP_SECRET }}
+          GH_REPO_OWNER: ${{ vars.GH_REPO_OWNER }}
+          GH_REPO_NAME: ${{ vars.GH_REPO_NAME }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Verify APK exists
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK" || { echo "::error::APK not found at $APK"; exit 1; }
+          ls -la "$APK"
+
+      - name: Upload release APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
