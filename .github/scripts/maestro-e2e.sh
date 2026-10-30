@@ -35,3 +35,11 @@ trap '
 ' EXIT
 
 maestro test --debug-output "$OUT" .maestro/smoke.yaml
+
+# The on-device NSFW image classifier must load and run on this emulator.
+adb logcat -d -s AISocialSafety:* > "$OUT/safety-logcat.txt" || true
+cat "$OUT/safety-logcat.txt"
+if ! grep -q 'NSFW classifier self-test ok' "$OUT/safety-logcat.txt"; then
+  echo "::error::NSFW classifier self-test line not found in logcat"
+  exit 1
+fi

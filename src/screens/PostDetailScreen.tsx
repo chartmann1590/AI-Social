@@ -6,6 +6,8 @@ import { Post, Comment } from '../types';
 import { PostCard } from '../components/PostCard';
 import { ReportContentDialog } from '../components/ReportContentDialog';
 import { LlmService } from '../services/llm';
+import { checkTextSafety } from '../services/imageSafety';
+import { isHiddenContent, useModerationStore } from '../store/moderation';
 import { useFeedStore, usePostCommentsStore, usePostEngagementStore, useSettingsStore, useUserPostsStore } from '../store';
 
 export const PostDetailScreen = () => {
@@ -23,6 +25,11 @@ export const PostDetailScreen = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [reportedComment, setReportedComment] = useState<Comment | null>(null);
+  const hiddenIds = useModerationStore((s) => s.hiddenIds);
+  const mutedAuthors = useModerationStore((s) => s.mutedAuthors);
+  const visibleComments = comments.filter(
+    (c) => !isHiddenContent({ hiddenIds, mutedAuthors }, c.id, c.author.handle),
+  );
 
   const syncCommentCount = (nextCount: number) => {
     updateFeedPostCommentCount(post.id, nextCount);
@@ -78,6 +85,11 @@ export const PostDetailScreen = () => {
 
   const handlePostComment = () => {
     if (!newComment.trim()) return;
+    const check = checkTextSafety(newComment);
+    if (!check.allowed) {
+      Alert.alert('Not allowed', check.reason ?? 'That comment is not allowed.');
+      return;
+    }
     const userComment: Comment = {
       id: Date.now().toString(),
       author: {
@@ -112,7 +124,7 @@ export const PostDetailScreen = () => {
           <ActivityIndicator style={{ margin: 20 }} />
         ) : (
           <>
-            {comments.map((comment) => (
+            {visibleComments.map((comment) => (
               <React.Fragment key={comment.id}>
                 <List.Item
                   title={comment.author.name}
@@ -166,6 +178,8 @@ export const PostDetailScreen = () => {
         visible={reportedComment !== null}
         onDismiss={() => setReportedComment(null)}
         contentType="comment"
+        contentId={reportedComment?.id ?? ''}
+        authorHandle={reportedComment?.author.handle}
         content={reportedComment?.content ?? ''}
       />
     </View>

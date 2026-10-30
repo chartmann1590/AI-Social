@@ -1,0 +1,330 @@
+# Release APK + App Bundle for Google Play. Release builds use __DEV__ false (real ad SDK).
+#
+# Required repository secrets (set via `gh secret set`):
+#   ADMOB_ANDROID_APP_ID, ADMOB_BANNER_AD_UNIT_ID, ADMOB_INTERSTITIAL_AD_UNIT_ID,
+#   ADMOB_NATIVE_AD_UNIT_ID, ADMOB_REWARDED_AD_UNIT_ID,
+#   ANDROID_CI_KEYSTORE_BASE64, ANDROID_CI_KEYSTORE_PASSWORD,
+#   ANDROID_CI_KEY_ALIAS, ANDROID_CI_KEY_PASSWORD.
+# Optional: ADMOB_DELAY_APP_MEASUREMENT_INIT, ADMOB_OPTIMIZE_INITIALIZATION, ADMOB_OPTIMIZE_AD_LOADING.
+# CI loads AdMob secrets into env vars for `expo prebuild`, then writes them into
+# android/local.properties (the single on-disk source of truth) before Gradle.
+
+name: Android safety build (signed AAB artifact only, no publish)
+
+# Builds the signed release AAB/APK for the play-safety-hardening branch and
+# keeps them as workflow artifacts. It does NOT create a GitHub Release, does
+# NOT bump ci/play-store-version-code and does NOT talk to Google Play.
+
+on:
+  push:
+    branches: [play-safety-hardening]
+
+concurrency:
+  group: android-safety-build
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.event.head_commit != null && !contains(github.event.head_commit.message, '[skip ci]')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android 16 KB verification tools
+        env:
+          BUNDLETOOL_VERSION: "1.18.3"
+        run: |
+          set -euo pipefail
+          sdkmanager "build-tools;35.0.0" "ndk;28.2.13676358"
+          curl -fsSL \
+            -o "$RUNNER_TEMP/bundletool.jar" \
+            "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar"
+          echo "BUNDLETOOL_JAR=$RUNNER_TEMP/bundletool.jar" >> "$GITHUB_ENV"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Ensure src/config.ts (gitignored locally; required for tsc + release bundle)
+        run: |
+          set -euo pipefail
+          if [ ! -f src/config.ts ]; then
+            cp src/config.example.ts src/config.ts
+            echo "Created src/config.ts from config.example.ts for CI bundling."
+          fi
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Jest unit tests (gate the release on green tests)
+        run: npm run test:ci
+
+      - name: Pin version (above the last Play production build 262071745)
+        id: bump
+        run: |
+          set -euo pipefail
+          v=262071800
+          echo "version_code=$v" >> "$GITHUB_OUTPUT"
+          echo "PLAY_STORE_VERSION_CODE=$v" >> "$GITHUB_ENV"
+          echo "ANDROID_VERSION_CODE=$v" >> "$GITHUB_ENV"
+          echo "ANDROID_VERSION_NAME=1.2.0" >> "$GITHUB_ENV"
+          echo "versionCode $v / versionName 1.2.0"
+
+      - name: Load AdMob IDs from GitHub Secrets
+        env:
+          SEC_APP: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+          SEC_BANNER: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          SEC_INT: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+          SEC_NATIVE: ${{ secrets.ADMOB_NATIVE_AD_UNIT_ID }}
+          SEC_REWARD: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
+          SEC_DELAY: ${{ secrets.ADMOB_DELAY_APP_MEASUREMENT_INIT }}
+          SEC_OPT_INIT: ${{ secrets.ADMOB_OPTIMIZE_INITIALIZATION }}
+          SEC_OPT_LOAD: ${{ secrets.ADMOB_OPTIMIZE_AD_LOADING }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "${SEC_APP:-}" ]    || missing+=(ADMOB_ANDROID_APP_ID)
+          [ -n "${SEC_BANNER:-}" ] || missing+=(ADMOB_BANNER_AD_UNIT_ID)
+          [ -n "${SEC_INT:-}" ]    || missing+=(ADMOB_INTERSTITIAL_AD_UNIT_ID)
+          [ -n "${SEC_NATIVE:-}" ] || missing+=(ADMOB_NATIVE_AD_UNIT_ID)
+          [ -n "${SEC_REWARD:-}" ] || missing+=(ADMOB_REWARDED_AD_UNIT_ID)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub Secrets: ${missing[*]}. Set them via gh secret set."
+            exit 1
+          fi
+          # Expose to subsequent steps. app.config.js reads ADMOB_ANDROID_APP_ID from env when set,
+          # which lets `expo prebuild` succeed without an android/ directory existing yet (prebuild
+          # creates it). After prebuild we mirror these into android/local.properties for the record.
+          {
+            echo "ADMOB_ANDROID_APP_ID=${SEC_APP}"
+            echo "ADMOB_BANNER_AD_UNIT_ID=${SEC_BANNER}"
+            echo "ADMOB_INTERSTITIAL_AD_UNIT_ID=${SEC_INT}"
+            echo "ADMOB_NATIVE_AD_UNIT_ID=${SEC_NATIVE}"
+            echo "ADMOB_REWARDED_AD_UNIT_ID=${SEC_REWARD}"
+            echo "ADMOB_DELAY_APP_MEASUREMENT_INIT=${SEC_DELAY:-false}"
+            echo "ADMOB_OPTIMIZE_INITIALIZATION=${SEC_OPT_INIT:-true}"
+            echo "ADMOB_OPTIMIZE_AD_LOADING=${SEC_OPT_LOAD:-true}"
+          } >> "$GITHUB_ENV"
+          echo "Loaded 5 AdMob IDs from GitHub Secrets."
+
+      - name: Decode upload keystore (Play upload signing)
+        env:
+          ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ANDROID_CI_KEYSTORE_BASE64:-}" ] \
+             || [ -z "${ANDROID_CI_KEYSTORE_PASSWORD:-}" ] \
+             || [ -z "${ANDROID_CI_KEY_ALIAS:-}" ] \
+             || [ -z "${ANDROID_CI_KEY_PASSWORD:-}" ]; then
+            echo "::warning::Play upload keystore secrets not fully set — release will be signed with the debug keystore (CI OK; not for Play production)."
+            exit 0
+          fi
+          # Strip every whitespace char so any encoding accident (CR/LF/space/tab) survives.
+          printf '%s' "$ANDROID_CI_KEYSTORE_BASE64" | tr -d ' \t\r\n' | base64 -d --ignore-garbage > "$RUNNER_TEMP/upload.jks"
+          if ! test -s "$RUNNER_TEMP/upload.jks"; then
+            echo "::error::Keystore secret decoded to empty file. Re-set ANDROID_CI_KEYSTORE_BASE64 (single-line base64 of upload.jks)."
+            exit 1
+          fi
+          chmod 600 "$RUNNER_TEMP/upload.jks"
+          keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$ANDROID_CI_KEYSTORE_PASSWORD" -alias "$ANDROID_CI_KEY_ALIAS" >/dev/null \
+            || { echo "::error::Keystore loaded but alias/password mismatch (alias=$ANDROID_CI_KEY_ALIAS)."; exit 1; }
+          echo "ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          echo "Keystore verified."
+
+      - name: Expo prebuild (Android)
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Materialize google-services.json
+        # The release build applies the Google Services plugin, which needs this file;
+        # it is gitignored, so write it from the same secret publish-google-play.yml uses.
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GOOGLE_SERVICES_JSON}" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON secret is empty or missing."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          python3 -c "import json;json.load(open('android/app/google-services.json'))"
+
+      - name: Raise Gradle heap (release packaging OOMs at the prebuild default)
+        run: |
+          set -euo pipefail
+          props=android/gradle.properties
+          if grep -q '^org.gradle.jvmargs=' "$props"; then
+            sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8/' "$props"
+          else
+            echo 'org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8' >> "$props"
+          fi
+          grep '^org.gradle.jvmargs=' "$props"
+
+      - name: Write android/local.properties (AdMob + sdk.dir)
+        run: |
+          set -euo pipefail
+          sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          test -n "$sdk"
+          {
+            echo "admob.android_app_id=${ADMOB_ANDROID_APP_ID}"
+            echo "admob.banner_ad_unit_id=${ADMOB_BANNER_AD_UNIT_ID}"
+            echo "admob.interstitial_ad_unit_id=${ADMOB_INTERSTITIAL_AD_UNIT_ID}"
+            echo "admob.native_ad_unit_id=${ADMOB_NATIVE_AD_UNIT_ID}"
+            echo "admob.rewarded_ad_unit_id=${ADMOB_REWARDED_AD_UNIT_ID}"
+            echo "admob.delay_app_measurement_init=${ADMOB_DELAY_APP_MEASUREMENT_INIT}"
+            echo "admob.optimize_initialization=${ADMOB_OPTIMIZE_INITIALIZATION}"
+            echo "admob.optimize_ad_loading=${ADMOB_OPTIMIZE_AD_LOADING}"
+            echo "sdk.dir=${sdk}"
+          } > android/local.properties
+          echo "android/local.properties (ad unit IDs masked):"
+          sed -E 's#(=ca-app-pub-[^/~]+[/~])(.{4}).*#\1\2***#' android/local.properties
+
+      - name: Build release APK (used for e2e and the published artifact)
+        # Debug APKs include the expo-dev-client launcher activity, which intercepts
+        # MainActivity and shows a "Development Build / DEVELOPMENT SERVERS" picker
+        # whenever no Metro server is reachable — Maestro then never sees the Welcome
+        # screen. Release builds skip the dev launcher and load the embedded bundle
+        # directly, so we e2e the same artifact we publish.
+        working-directory: android
+        env:
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+          GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
+          GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
+          GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Enable KVM (emulator hardware acceleration)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-android-33-google_apis-x86_64-v1
+
+      - name: Pre-create AVD snapshot (cache miss only)
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: echo "AVD created and cached."
+
+      - name: e2e smoke test (Maestro on Android emulator)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          # The action runs each script line as a separate `/usr/bin/sh -c` invocation,
+          # so any multi-line script with shared variables breaks. Delegate to a single
+          # bash invocation that owns its own state.
+          script: bash .github/scripts/maestro-e2e.sh
+
+      - name: Upload Maestro debug output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-debug-output
+          path: maestro-output
+          if-no-files-found: ignore
+
+      - name: Gradle release bundle (APK already built earlier for e2e)
+        working-directory: android
+        env:
+          ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+          ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+          ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+          GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
+          GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
+          GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
+        run: |
+          ./gradlew bundleRelease --stacktrace
+
+      - name: Verify outputs, signing, and 16 KB page-size compliance
+        run: |
+          set -euo pipefail
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$AAB"
+          test -f "$APK"
+          ls -la android/app/build/outputs/bundle/release/
+          ls -la android/app/build/outputs/apk/release/
+          BUILD_TOOLS=$(ls -1 "$ANDROID_SDK_ROOT/build-tools/" | sort -V | tail -1)
+          APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner"
+          "$APKSIGNER" verify --print-certs "$APK" | head -20
+          node scripts/verify-android-16kb-page-size.mjs "$APK" "$AAB"
+
+      - name: Confirm the NSFW classifier model is inside the app
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          unzip -l "$APK" | grep -F 'assets/models/nsfw_mobilenet_v2_224.tflite'
+          unzip -l "$AAB" | grep -F 'base/assets/models/nsfw_mobilenet_v2_224.tflite'
+          unzip -l "$APK" | grep -F 'assets/models/nsfw_marqo_vit_tiny_384_int8.onnx'
+          unzip -l "$AAB" | grep -F 'base/assets/models/nsfw_marqo_vit_tiny_384_int8.onnx'
+          unzip -l "$APK" | grep -F 'assets/models/selftest.jpg'
+          unzip -l "$APK" | grep -E 'lib/arm64-v8a/libtensorflowlite_jni.so'
+          unzip -l "$APK" | grep -E 'lib/arm64-v8a/libonnxruntime.so'
+          aapt2=$(ls -1d "$ANDROID_SDK_ROOT"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$aapt2" dump badging "$APK" | head -3
+
+      - name: Keep the signed AAB + APK as artifacts (90 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: aisocial-safety-${{ steps.bump.outputs.version_code }}
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 90
+          if-no-files-found: error

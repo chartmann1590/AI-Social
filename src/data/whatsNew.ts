@@ -8,6 +8,15 @@ export interface WhatsNewEntry {
 /** Newest first. Only entries[0] is ever shown (see useWhatsNewStore). */
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026.10.30-safety',
+    title: "What's new",
+    notes: [
+      'AI Social never creates nude or sexual images. Every image is checked on your phone before you see it.',
+      'AI posts and comments are filtered for sexual content.',
+      'Report any post, comment or image: it is hidden right away. You can also hide an AI author.',
+    ],
+  },
+  {
     id: '2026.07.20-reporting',
     title: "What's new",
     notes: [

@@ -13,7 +13,9 @@ import { TextInput, Button, Text, useTheme, IconButton } from 'react-native-pape
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LlmService } from '../services/llm';
-import { buildSafeImagePrompt, checkImagePrompt } from '../services/imageSafety';
+import { buildSafeImagePrompt, checkImagePrompt, checkTextSafety } from '../services/imageSafety';
+import { BlockedImageError, deleteCheckedImage, fetchAndScreenImage } from '../services/safeImage';
+import { ReportContentDialog } from '../components/ReportContentDialog';
 import { useSettingsStore, useFeedStore, usePostEngagementStore, useUserStore, useUserPostsStore } from '../store';
 import { MediaAsset, Post } from '../types';
 import { avatarUrl } from './onboarding/avatarUtils';
@@ -38,6 +40,7 @@ export const ComposeScreen = () => {
   const [imageGenReady, setImageGenReady] = useState(false);
   const [checkingImageSetup, setCheckingImageSetup] = useState(true);
   const [composeLightboxIndex, setComposeLightboxIndex] = useState<number | null>(null);
+  const [reportedMedia, setReportedMedia] = useState<MediaAsset | null>(null);
 
   const verifyImageGenSetup = useCallback(async () => {
     const path = localImageModelPath.trim();
@@ -88,29 +91,33 @@ export const ComposeScreen = () => {
     if (!info.exists) {
       throw new Error('Image model file not found. Re-download in Models or fix the path in Settings.');
     }
-    // Safety gate: runs BEFORE any network request. A blocked prompt
-    // throws here and never reaches the image provider (see
-    // src/services/imageSafety.ts). Allowed prompts go out with the
-    // provider's strict safe filter on, plus a safe framing suffix.
+    // Layer 1: prompt filter BEFORE any network request. A blocked prompt
+    // throws "Not allowed ..." here and never reaches the image provider
+    // (src/services/imageSafety.ts).
     const safePrompt = buildSafeImagePrompt(trimmedPrompt);
     const seed = Math.floor(Math.random() * 1000000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=1024&height=1024&seed=${seed}&nologo=true&safe=true`;
-    const res = await fetch(imageUrl);
-    if (!res.ok) {
-      throw new Error(`Image request failed (${res.status}). Try again in a moment.`);
-    }
+    // Layer 2: the provider's strict safe filter (safe=true) + safe framing.
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(safePrompt)}?width=1024&height=1024&seed=${seed}&nologo=true&safe=true&private=true`;
+    // Layer 3: download, classify the pixels on-device, discard if flagged.
+    // Only the checked local file is ever displayed.
+    const localUri = await fetchAndScreenImage(imageUrl, `ai-${seed}`);
     return {
       id: `ai-image-${Date.now()}`,
       type: 'image',
-      uri: imageUrl,
+      uri: localUri,
       source: 'ai',
-      provider: 'AI (local SD path verified, render via cloud until native SD is wired)',
+      provider: 'AI image (safety checked on this phone)',
     };
   };
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
       Alert.alert('Topic Required', 'Please enter a topic for the AI to write about.');
+      return;
+    }
+    const topicCheck = checkTextSafety(topic);
+    if (!topicCheck.allowed) {
+      Alert.alert('Not allowed', topicCheck.reason ?? 'That topic is not allowed.');
       return;
     }
     setLoading(true);
@@ -128,6 +135,11 @@ export const ComposeScreen = () => {
 
   const handlePost = () => {
     if (!text.trim()) return;
+    const textCheck = checkTextSafety(text);
+    if (!textCheck.allowed) {
+      Alert.alert('Not allowed', textCheck.reason ?? 'That post is not allowed.');
+      return;
+    }
     const postId = Date.now().toString();
     const likes = usePostEngagementStore.getState().ensureLikeCount(postId, 3, 48);
 
@@ -156,31 +168,38 @@ export const ComposeScreen = () => {
     navigation.navigate('Feed');
   };
 
-  const handleAttachManualImage = () => {
+  const handleAttachManualImage = async () => {
     const uri = manualImageUrl.trim();
     if (!uri) return;
-    // Same screen as generated images, applied to the URL text: an
-    // obviously explicit URL cannot be attached as a post image.
-    // (Pixel-level inspection of a pasted URL is not possible here;
-    // posted images remain reportable via PostCard / PostDetail.)
+    // Same prompt filter on the URL text, then the same on-device pixel
+    // classifier as generated images. Only the checked local copy is used.
     if (!checkImagePrompt(uri).allowed) {
       Alert.alert(
-        'Image blocked',
-        'That image URL looks like sexual or explicit content, which AI Social does not allow.',
+        'Not allowed',
+        'That image link looks like sexual or explicit content, which AI Social does not allow.',
       );
       return;
     }
-    setMedia((prev) => [
-      ...prev,
-      {
-        id: `manual-${Date.now()}`,
-        type: 'image',
-        uri,
-        source: 'local',
-        provider: 'Manual URL',
-      },
-    ]);
-    setManualImageUrl('');
+    try {
+      setGeneratingImage(true);
+      const localUri = await fetchAndScreenImage(uri, 'manual');
+      setMedia((prev) => [
+        ...prev,
+        {
+          id: `manual-${Date.now()}`,
+          type: 'image',
+          uri: localUri,
+          source: 'local',
+          provider: 'Image link (safety checked on this phone)',
+        },
+      ]);
+      setManualImageUrl('');
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      Alert.alert(error instanceof BlockedImageError ? 'Not allowed' : 'Could not attach image', detail);
+    } finally {
+      setGeneratingImage(false);
+    }
   };
 
   const handleGenerateImage = async () => {
@@ -191,7 +210,8 @@ export const ComposeScreen = () => {
       setMedia((prev) => [...prev, asset]);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
-      Alert.alert('Image generation failed', detail);
+      const blocked = error instanceof BlockedImageError || /^Not allowed/.test(detail);
+      Alert.alert(blocked ? 'Not allowed' : 'Image generation failed', detail);
     } finally {
       setGeneratingImage(false);
     }
@@ -285,9 +305,9 @@ export const ComposeScreen = () => {
           variant="bodySmall"
           style={[styles.setupHint, { color: theme.colors.onSurfaceVariant }]}
         >
-          AI images are filtered: sexual, nude, or explicit prompts are blocked before generation, and
-          generation uses the provider&apos;s strict safe filter. Posts can be reported from the feed or
-          post detail view.
+          AI images are always filtered: sexual, nude or revealing prompts are blocked before anything is
+          generated, the image service runs in strict safe mode, and every image is checked on this phone
+          and discarded if it is not appropriate. Tap the flag on any image, post or comment to report it.
         </Text>
 
         {generatingImage && (
@@ -338,14 +358,36 @@ export const ComposeScreen = () => {
                   onPress={() => {
                     setMedia((prev) => prev.filter((m) => m.id !== item.id));
                     setComposeLightboxIndex(null);
+                    deleteCheckedImage(item.uri).catch(() => {});
                   }}
                   style={[styles.composeRemove, { backgroundColor: theme.colors.surface }]}
+                />
+                <IconButton
+                  icon="flag-outline"
+                  size={20}
+                  accessibilityLabel="Report this image"
+                  onPress={() => setReportedMedia(item)}
+                  style={[styles.composeReport, { backgroundColor: theme.colors.surface }]}
                 />
               </View>
             ))}
           </View>
         )}
       </ScrollView>
+
+      <ReportContentDialog
+        visible={reportedMedia !== null}
+        onDismiss={() => setReportedMedia(null)}
+        contentType="image"
+        contentId={reportedMedia?.id ?? ''}
+        content={reportedMedia ? `AI image: ${reportedMedia.provider ?? ''} ${imagePrompt.trim()}`.trim() : ''}
+        onReported={() => {
+          const item = reportedMedia;
+          if (!item) return;
+          setMedia((prev) => prev.filter((m) => m.id !== item.id));
+          deleteCheckedImage(item.uri).catch(() => {});
+        }}
+      />
 
       <MediaLightbox
         visible={composeLightboxIndex !== null}
@@ -418,6 +460,13 @@ const styles = StyleSheet.create({
   composeRemove: {
     position: 'absolute',
     top: -10,
+    right: -10,
+    margin: 0,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  composeReport: {
+    position: 'absolute',
+    bottom: -10,
     right: -10,
     margin: 0,
     backgroundColor: 'rgba(255,255,255,0.9)',

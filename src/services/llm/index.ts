@@ -2,6 +2,20 @@ import type { AppSettings, Comment, Post } from '../../types';
 import type { LlmMode } from '../../types';
 import { localLiteRtProvider } from './providers/localLiteRt';
 import { remoteOllamaProvider } from './providers/remoteOllama';
+import { BLOCKED_TEXT_MESSAGE, checkTextSafety, isTextSafe } from '../imageSafety';
+
+/**
+ * Client-side safety layer on every piece of AI text. The app can be
+ * pointed at ANY Ollama server and model, so the model's own guardrails
+ * cannot be relied on: posts/comments that fail the filter are dropped
+ * before they reach the screen, and unsafe drafts are refused.
+ */
+function safePost(p: Post): boolean {
+  return isTextSafe(p.content) && isTextSafe(`${p.author.name} ${p.author.handle}`);
+}
+function safeComment(c: Comment): boolean {
+  return isTextSafe(c.content) && isTextSafe(`${c.author.name} ${c.author.handle}`);
+}
 
 function shouldTryLocal(mode: LlmMode): boolean {
   return mode === 'local' || mode === 'hybrid';
@@ -76,7 +90,7 @@ async function generateAtLeastPosts(
     const need = target - all.length;
     try {
       const batch = await runOne(Math.max(need, 3), nextBaseTime);
-      for (const post of batch) {
+      for (const post of batch.filter(safePost)) {
         const key = `${post.author.handle}|${post.content}`.trim();
         if (!seen.has(key) && post.content) {
           seen.add(key);
@@ -129,30 +143,45 @@ export const LlmService = {
     postContent: string,
     count: number = 3,
   ): Promise<Comment[]> {
-    return withFallback(
+    const comments = await withFallback(
       settings.llmMode,
       settings,
       () => localLiteRtProvider.generateComments(settings, postContent, count),
       () => remoteOllamaProvider.generateComments(settings, postContent, count),
     );
+    return comments.filter(safeComment);
   },
 
   async generateDraft(settings: AppSettings, topic: string): Promise<string> {
-    return withFallback(
+    if (!checkTextSafety(topic).allowed) {
+      throw new Error(BLOCKED_TEXT_MESSAGE);
+    }
+    const draft = await withFallback(
       settings.llmMode,
       settings,
       () => localLiteRtProvider.generateDraft(settings, topic),
       () => remoteOllamaProvider.generateDraft(settings, topic),
     );
+    if (!isTextSafe(draft)) {
+      throw new Error(BLOCKED_TEXT_MESSAGE);
+    }
+    return draft;
   },
 
   async generateText(settings: AppSettings, prompt: string): Promise<string> {
-    return withFallback(
+    if (!checkTextSafety(prompt).allowed) {
+      throw new Error(BLOCKED_TEXT_MESSAGE);
+    }
+    const text = await withFallback(
       settings.llmMode,
       settings,
       () => localLiteRtProvider.generateText(settings, prompt),
       () => remoteOllamaProvider.generateText(settings, prompt),
     );
+    if (!isTextSafe(text)) {
+      throw new Error(BLOCKED_TEXT_MESSAGE);
+    }
+    return text;
   },
 };
 

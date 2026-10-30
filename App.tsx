@@ -10,10 +10,13 @@ import { AdMobBanner } from './src/ads/AdMobBanner';
 import { AdMobProvider } from './src/ads/AdMobProvider';
 import { initializeFirebase } from './src/services/firebase';
 import { WhatsNewDialog } from './src/components/WhatsNewDialog';
+import { runClassifierSelfTest } from './src/services/nsfwClassifier';
 
 export default function App() {
   useEffect(() => {
     initializeFirebase();
+    // Loads the on-device image safety model once and logs a self-test line.
+    runClassifierSelfTest();
   }, []);
   const colorScheme = useColorScheme();
   const themePreference = useSettingsStore((state) => state.themePreference);
