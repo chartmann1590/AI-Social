@@ -21,6 +21,8 @@ The in-app "Support & Feedback" bug reporter is opt-in: if the user chooses to s
 - **Remote / Hybrid mode**: when the user configures an Ollama server URL in Settings, generation prompts are sent to that URL only. Prompt data does not flow to Anthropic, Google, or any other third party unless the user chooses a URL operated by that party.
 - **Analytics & crash reporting**: Google Firebase (Analytics, Crashlytics, Performance) receives aggregated usage events, crash reports, and performance metrics.
 - **Advertising**: Google AdMob receives ad request, interaction, diagnostic, IP address, and identifier data through the Google Mobile Ads SDK for advertising, analytics, and fraud prevention.
+- **AI image generation (only when the user taps Generate Image)**: the image prompt, after it passes the on-device content check, is sent to Pollinations.ai (`image.pollinations.ai`) to render the image. No account or identifier is sent; the request carries the device IP address. Data Safety form: "App activity > Other user-generated content", shared, for App functionality, not optional for this feature (users can simply not use it).
+- **Content reports (only when the user taps Report)**: the reported AI text, the chosen reason, an optional note and the model name go through the same Cloudflare Worker to the project's GitHub issue tracker.
 - **Bug reports (opt-in only)**: content the user explicitly submits via Support & Feedback is sent through a Cloudflare Worker to the project's GitHub repository as a public issue.
 
 ## Network requests made by the app

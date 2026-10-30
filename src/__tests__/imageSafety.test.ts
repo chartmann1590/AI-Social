@@ -38,7 +38,7 @@ describe('checkImagePrompt', () => {
 
 describe('buildSafeImagePrompt', () => {
   test('throws for a blocked prompt instead of returning it', () => {
-    expect(() => buildSafeImagePrompt('nude woman on a beach')).toThrow(/blocked/i);
+    expect(() => buildSafeImagePrompt('nude woman on a beach')).toThrow(/not allowed/i);
   });
 
   test('adds safe framing to an allowed prompt', () => {

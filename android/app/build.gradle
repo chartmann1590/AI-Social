@@ -168,6 +168,7 @@ android {
         }
     }
     androidResources {
+        noCompress += 'tflite'
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
 }
@@ -193,6 +194,8 @@ android {
 }
 
 dependencies {
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.31.1'
+    implementation 'com.google.ai.edge.litert:litert:1.4.0'
     implementation 'com.google.ai.edge.litertlm:litertlm-android:0.10.0'
     implementation 'com.google.mediapipe:tasks-genai:0.10.27'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'

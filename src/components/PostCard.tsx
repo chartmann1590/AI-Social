@@ -18,6 +18,7 @@ import type { MediaAsset, Post } from '../types';
 import { formatAbsoluteForA11y, formatRelativeTime } from '../utils/time';
 import { ReportContentDialog } from './ReportContentDialog';
 import { ShareablePostCard } from './ShareablePostCard';
+import { isHiddenContent, useModerationStore } from '../store/moderation';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -147,6 +148,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress }) => {
     }
   };
 
+  const hidden = useModerationStore((s) => isHiddenContent(s, post.id, post.author.handle));
   const media = post.media ?? [];
 
   const relative = formatRelativeTime(post.createdAt);
@@ -155,6 +157,18 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress }) => {
   const a11yLabel = a11yWhen
     ? `Post by ${post.author.name} at ${a11yWhen}. ${post.content.slice(0, 200)}`
     : `Post by ${post.author.name}. ${post.content.slice(0, 200)}`;
+
+  if (hidden) {
+    return (
+      <Card style={styles.card} accessibilityLabel="Hidden post">
+        <Card.Content>
+          <Text variant="bodySmall" style={{ opacity: 0.6 }}>
+            Hidden: you reported this post or hid this author.
+          </Text>
+        </Card.Content>
+      </Card>
+    );
+  }
 
   return (
     <Card style={styles.card} mode="elevated">
@@ -239,6 +253,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress }) => {
         visible={reportVisible}
         onDismiss={() => setReportVisible(false)}
         contentType="post"
+        contentId={post.id}
+        authorHandle={post.author.handle}
         content={post.content}
       />
 

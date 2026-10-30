@@ -1,5 +1,8 @@
 package com.charles.aisocial
 
+// @generated begin aisocial-nsfw-classifier-import - expo prebuild (DO NOT MODIFY) sync-81c73ccb957755953d4a9d3d8213aa32c6fb3bbf
+import com.charles.aisocial.safety.NsfwClassifierPackage
+// @generated end aisocial-nsfw-classifier-import
 import android.app.Application
 import android.content.res.Configuration
 
@@ -29,6 +32,9 @@ class MainApplication : Application(), ReactApplication {
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
+// @generated begin aisocial-nsfw-classifier-pkg - expo prebuild (DO NOT MODIFY) sync-87523482f8871089cd481dbf9ee12cb708893d57
+              add(NsfwClassifierPackage())
+// @generated end aisocial-nsfw-classifier-pkg
 // @generated begin aisocial-litert-llm-pkg - expo prebuild (DO NOT MODIFY) sync-3ea3215c862016f05c0a17deb985978a1cc99664
               add(LiteRtLlmPackage())
 // @generated end aisocial-litert-llm-pkg

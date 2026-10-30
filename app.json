@@ -4,7 +4,8 @@
       "expo-dev-client",
       "expo-notifications",
       "./plugins/withLiteRtLlm.js",
-      "./plugins/withFeedback.js"
+      "./plugins/withFeedback.js",
+      "./plugins/withNsfwClassifier.js"
     ],
     "name": "AISocial",
     "slug": "AISocial",

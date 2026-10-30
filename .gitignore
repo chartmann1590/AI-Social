@@ -91,3 +91,14 @@ play-store/*.aab
 # Cloudflare Worker local dev state/secrets (real secrets live in `wrangler secret put`)
 cloudflare/**/.wrangler
 cloudflare/**/.dev.vars
+
+# On-device NSFW classifier model (17 MB). plugins/withNsfwClassifier.js puts it in place
+# at prebuild time (copied from here, or downloaded and SHA-256 checked).
+/assets/models/*.tflite
+/android/app/src/main/assets/models/*.tflite
+/android/app/src/main/assets/models/*.onnx
+/android/app/src/main/assets/models/selftest.jpg
+
+# The second safety model is committed in <1 MB parts (assets/models/marqo-parts/);
+# plugins/withNsfwClassifier.js joins them and checks the SHA-256.
+/assets/models/*.onnx

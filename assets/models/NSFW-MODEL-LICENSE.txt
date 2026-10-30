@@ -1,0 +1,12 @@
+nsfw_mobilenet_v2_224.tflite
+Source: https://github.com/GantMan/nsfw_model (release 1.2.0, mobilenet_v2_140_224/saved_model.tflite)
+License: MIT, Copyright (c) 2019 Gant Laborde
+Classes: drawings, hentai, neutral, porn, sexy. Input 224x224x3 float RGB scaled to [0,1].
+Used on-device only, to block sexual or nude images before they are displayed.
+
+
+---------------------------------------------------------------------------
+nsfw_marqo_vit_tiny_384_int8.onnx
+Marqo/nsfw-image-detection-384 (https://huggingface.co/Marqo/nsfw-image-detection-384)
+Licensed under the Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+Exported to ONNX and int8-quantized by scripts/build-marqo-nsfw-onnx.py; no other changes.
