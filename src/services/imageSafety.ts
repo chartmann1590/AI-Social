@@ -125,6 +125,10 @@ const IMAGE_PHRASES: RegExp[] = [
   /\b(birth|statue|sculpture|painting|goddess|botticelli|titian|reclining) of venus\b/, /\breclining (venus|woman|nude|figure)\b/,
   /\badam and eve\b/, /\bstatue of david\b/, /\bmichelangelo'?s? david\b/, /\baphrodite\b/, /\bgarden of eden\b/,
   /\b(greek|roman|classical|ancient|marble|nude) (goddess|god) (statue|sculpture)\b/, /\b(hot tub|jacuzzi|towel|bathrobe)\b/,
+  /\b(statue|statues|sculpture|sculptures)\b.*\b(goddess|goddesses|gods?|venus|aphrodite|david|wom[ae]n|m[ae]n|lady|ladies|girls?|boys?|nude|naked|figures?|body|female|male|nymphs?)\b/,
+  /\b(goddess|goddesses|gods?|venus|aphrodite|david|wom[ae]n|m[ae]n|lady|ladies|girls?|boys?|nude|naked|figures?|body|female|male|nymphs?)\b.*\b(statue|statues|sculpture|sculptures)\b/,
+  /\bbeach volleyball\b/, /\bmermaids?\b/, /\bcrop ?tops?\b/, /\bsports? bras?\b/, /\bleotards?\b/,
+  /\bcheerleaders?\b/, /\bbody ?build(er|ers|ing)\b/, /\b(six ?pack|abs)\b/, /\bworkout (clothes|outfit|gear)\b/,
   /\b(silk|satin) sheets\b/, /\bmassage\b/, /\btiny (outfit|clothes|dress|shorts|top)\b/, /\bbooty shorts\b/,
   // anatomy / sexual body terms
   /\bgenital(s|ia)?\b/, /\bpenis(es)?\b/, /\bvagina(s|l)?\b/, /\bvulva\b/, /\bdick(s)?\b/, /\bcock(s)?\b/, /\bpussy\b/,

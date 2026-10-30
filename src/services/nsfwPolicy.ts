@@ -7,10 +7,11 @@
  *
  * Blocked when EITHER model is near-certain, or when BOTH lean NSFW.
  * Calibrated on Google's own evidence image (GantMan porn+hentai 0.99-1.0,
- * Marqo 0.63-0.95 -> blocked) and on ordinary Pollinations images of
- * people, where each model alone produced false alarms (GantMan up to
- * 0.87 on a yoga class, Marqo 0.95 on a woman in a red dress) but never
- * both together. The quadrant scores are kept for diagnostics only:
+ * Marqo 0.63-0.95 -> blocked), 8 explicit test images (all blocked),
+ * revealing-but-clothed images (sheer sportswear, a bare-breasted statue,
+ * crop top, mermaid -> blocked) and 20 ordinary Pollinations images, where
+ * each model alone produced false alarms (GantMan up to 0.87 on a yoga
+ * class, Marqo 0.95 on a woman in a red dress) but not both together. The quadrant scores are kept for diagnostics only:
  * Pollinations' corner watermark makes them noisy. Any failure to
  * classify is handled by the caller as BLOCKED.
  */
@@ -31,7 +32,8 @@ export type NsfwRegions = {
 };
 
 export const NSFW_THRESHOLDS = {
-  gantmanAlone: 0.95, // porn + hentai
+  gantmanAlone: 0.92, // porn + hentai
+  sexyAlone: 0.85, // GantMan "sexy" (revealing clothing) on its own
   marqoAlone: 0.98,
   bothGantman: 0.5, // porn + hentai, together with...
   bothMarqo: 0.6, // ...Marqo NSFW
@@ -45,6 +47,7 @@ export function evaluateNsfwScores(s: NsfwScores): NsfwVerdict {
   const t = NSFW_THRESHOLDS;
   const g = s.porn + s.hentai;
   if (g >= t.gantmanAlone) return { blocked: true, reason: 'gantman', scores: s };
+  if (s.sexy >= t.sexyAlone) return { blocked: true, reason: 'sexy', scores: s };
   if (typeof s.marqo !== 'number' || !Number.isFinite(s.marqo)) {
     // Second model missing for this region: fall back to GantMan alone, strictly.
     if (g >= t.bothGantman || s.sexy >= t.sexyWithMarqo) return { blocked: true, reason: 'gantman-only', scores: s };
