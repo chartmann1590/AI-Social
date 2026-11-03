@@ -1,5 +1,5 @@
 /**
- * Content safety filters for AI Social (prompts and AI text).
+ * Content safety filters for Driftfeed (prompts and AI text).
  *
  * Image generation, image links and media import were REMOVED from the
  * app in the relaunch (Nov 2026): the app is text-only. The image checks
@@ -35,10 +35,10 @@ export type ImagePromptCheck = {
 };
 
 export const BLOCKED_IMAGE_MESSAGE =
-  'Not allowed: AI Social never creates nude, sexual or revealing images. Try a different, fully clothed, family-friendly idea.';
+  'Not allowed: Driftfeed never creates nude, sexual or revealing images. Try a different, fully clothed, family-friendly idea.';
 
 export const BLOCKED_TEXT_MESSAGE =
-  'Not allowed: AI Social does not write sexual or explicit content. Try a different topic.';
+  'Not allowed: Driftfeed does not write sexual or explicit content. Try a different topic.';
 
 // Look-alike letters from other scripts and fullwidth forms that NFKD
 // does not fold to ASCII on its own.
@@ -288,14 +288,14 @@ const TEXT_FLAT_WORDS: string[] = ['porn', 'nsfw', 'hentai', 'onlyfans', 'mastur
  * accepted failure mode.
  */
 export const PROFANITY_PATTERNS: RegExp[] = [
-  /\bcunt\w*\b/, /\bshit\w*\b/, /\bbullshit\b/, /\bbitch\w*\b/, /\basshole(s)?\b/, /\bdickhead(s)?\b/, /\bdick(s)?\b/,
+  /\bcunt\w*\b/, /\bshit(s|e|y|ty|ing|ting|head|heads|hole|show|load|faced|less)?\b/, /\bbullshit\b/, /\bbitch\w*\b/, /\basshole(s)?\b/, /\bdickhead(s)?\b/, /\bdick(s)?\b/,
   /\bcock(s)?\b/, /\bpuss(y|ies)\b/, /\bbastard(s)?\b/, /\bwanker(s)?\b/, /\btwat(s)?\b/, /\bprick(s)?\b/,
   /\bdamn ?it\b/, /\bgoddamn\w*\b/, /\bwtf\b/, /\bstfu\b/, /\bfml\b/,
   /\bn[i1]gg\w*\b/, /\bfag\w*\b/, /\bretard\w*\b/, /\bspic(s)?\b/, /\bkike(s)?\b/, /\bchink(s)?\b/, /\btrann(y|ies)\b/,
 ];
 
 export const BLOCKED_PROFANITY_MESSAGE =
-  'Not allowed: AI Social keeps posts family-friendly, with no swearing or slurs. Try different words.';
+  'Not allowed: Driftfeed keeps posts family-friendly, with no swearing or slurs. Try different words.';
 
 export function checkTextSafety(text: string): ImagePromptCheck {
   const trimmed = (text ?? '').trim();

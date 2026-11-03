@@ -279,7 +279,7 @@ export const ModelSetupScreen = ({ navigation }: Props) => {
         Bring your brain
       </Text>
       <Text variant="bodyMedium" style={[styles.blurb, { color: theme.colors.onSurfaceVariant }]}>
-        AI Social needs a language model to generate posts. Download one to your phone, or point
+        Driftfeed needs a language model to generate posts. Download one to your phone, or point
         the app at your own Ollama server. You can swap later in Settings.
       </Text>
 

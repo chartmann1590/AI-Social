@@ -85,7 +85,7 @@ export const WelcomeScreen = ({ navigation }: Props) => {
           color={theme.colors.primary}
         />
         <Text variant="displaySmall" style={[styles.title, { color: theme.colors.primary }]}>
-          AI Social
+          Driftfeed
         </Text>
         <Text variant="titleMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
           A make-believe social feed,{`\n`}powered by an LLM that lives on your phone.

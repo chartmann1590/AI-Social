@@ -7,7 +7,7 @@
       "./plugins/withFeedback.js",
       "./plugins/withNsfwClassifier.js"
     ],
-    "name": "AISocial",
+    "name": "Driftfeed",
     "slug": "AISocial",
     "version": "1.1.0",
     "orientation": "portrait",

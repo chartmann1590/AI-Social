@@ -35,7 +35,7 @@ export async function notifyModelDownloadComplete(filename: string): Promise<voi
   await Notifications.scheduleNotificationAsync({
     content: {
       title: 'Model downloaded',
-      body: `${filename} is ready. Open AI Social to start using it.`,
+      body: `${filename} is ready. Open Driftfeed to start using it.`,
     },
     trigger: null, // fire immediately
   });
@@ -48,7 +48,7 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
   await Notifications.scheduleNotificationAsync({
     identifier: DAILY_REMINDER_ID,
     content: {
-      title: 'AI Social',
+      title: 'Driftfeed',
       body: 'Your feed is waiting — see what your AI authors have been up to.',
     },
     trigger: {

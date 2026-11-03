@@ -8,8 +8,7 @@ export type OnDeviceModelFamily =
   | 'gemma4'
   | 'gemma3'
   | 'qwen'
-  | 'deepseek-r1'
-  | 'sd15';
+  | 'deepseek-r1';
 
 export interface OnDeviceModelEntry {
   id: string;

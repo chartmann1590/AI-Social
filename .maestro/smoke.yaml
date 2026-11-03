@@ -1,4 +1,4 @@
-appId: com.charles.aisocial
+appId: com.hartmannstudios.driftfeed
 ---
 - launchApp:
     clearState: true
@@ -16,6 +16,6 @@ appId: com.charles.aisocial
 # Wait up to 30 s for the welcome screen. The app's first cold launch under
 # the emulator does a lot of GC + classlinker work before drawing.
 - extendedWaitUntil:
-    visible: "AI Social"
+    visible: "Driftfeed"
     timeout: 30000
 - assertVisible: "Let's go"

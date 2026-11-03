@@ -50,7 +50,7 @@ function FeedStack() {
         name="FeedList"
         component={FeedScreen}
         options={({ navigation }) => ({
-          title: 'AI Social',
+          title: 'Driftfeed',
           headerLeft: () => (
             <HeaderAvatar onPress={() => navigation.navigate('Profile')} />
           ),
@@ -84,13 +84,13 @@ function SettingsStack() {
           headerRight: () => (
             <IconButton
               icon="information-outline"
-              accessibilityLabel="About AISocial"
+              accessibilityLabel="About Driftfeed"
               onPress={() => navigation.navigate('About' as never)}
             />
           ),
         })}
       />
-      <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About AISocial' }} />
+      <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Driftfeed' }} />
     </Stack.Navigator>
   );
 }

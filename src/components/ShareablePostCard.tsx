@@ -27,7 +27,7 @@ export const ShareablePostCard = forwardRef<ViewShot, ShareablePostCardProps>(({
         </View>
         <Text variant="bodyLarge" style={styles.content}>{post.content}</Text>
         <View style={styles.footer}>
-          <Text variant="labelMedium" style={styles.watermark}>AI Social — a make-believe feed, written by AI</Text>
+          <Text variant="labelMedium" style={styles.watermark}>Driftfeed — a make-believe feed, written by AI</Text>
         </View>
       </View>
     </ViewShot>

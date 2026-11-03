@@ -358,7 +358,7 @@ export const ProfileScreen = () => {
             variant="bodyMedium"
             style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}
           >
-            Attach media in Compose or import from Pixabay in this tab.
+            Driftfeed is text only.
           </Text>
         </View>
       );

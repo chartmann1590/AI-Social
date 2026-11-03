@@ -29,10 +29,8 @@ export const SettingsScreen = () => {
     llmMode,
     enableRemoteFallback,
     localModelPath,
-    localImageModelPath,
     localMaxTokens,
     localTemperature,
-    pixabayApiKey,
     dailyReminderEnabled,
     setBaseUrl,
     setModel,
@@ -41,10 +39,8 @@ export const SettingsScreen = () => {
     setLlmMode,
     setEnableRemoteFallback,
     setLocalModelPath,
-    setLocalImageModelPath,
     setLocalMaxTokens,
     setLocalTemperature,
-    setPixabayApiKey,
     setDailyReminderEnabled,
   } = useSettingsStore();
 

@@ -1,5 +1,5 @@
 /** Shared system prompt for all LLM backends (Ollama + on-device). */
-export const SYSTEM_PROMPT = `You are the backend engine for a simulated social media app called AISocial.
+export const SYSTEM_PROMPT = `You are the backend engine for a simulated social media app called Driftfeed.
 
 Your job is to generate realistic, engaging, family-friendly social media content that is suitable for everyone.
 
@@ -21,7 +21,7 @@ const POST_THEMES = [
   'a tiny life win or accomplishment',
   'a self-deprecating joke or relatable complaint',
   'a piece of tech news or a new gadget reaction',
-  'a travel observation or photo caption',
+  'a travel observation',
   'a book, movie, or show recommendation',
   'a fitness, running, or gym update',
   'a food discovery or recipe mishap',
