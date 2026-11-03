@@ -18,6 +18,10 @@ name: Driftfeed build (signed AAB artifact only, no publish)
 on:
   push:
     branches: [relaunch-safe]
+    paths-ignore:
+      - '.maestro/screens.yaml'
+      - '.github/scripts/driftfeed-screens.sh'
+      - '.github/workflows/driftfeed-screens.yml'
   workflow_dispatch:
 
 concurrency:
