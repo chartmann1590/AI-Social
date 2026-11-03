@@ -23,7 +23,6 @@ interface SettingsState extends AppSettings {
   setLocalImageModelPath: (path: string) => void;
   setLocalMaxTokens: (n: number) => void;
   setLocalTemperature: (t: number) => void;
-  setPixabayApiKey: (key: string) => void;
   setDailyReminderEnabled: (enabled: boolean) => void;
 }
 
@@ -40,7 +39,6 @@ export const useSettingsStore = create<SettingsState>()(
       localImageModelPath: '',
       localMaxTokens: 1024,
       localTemperature: 0.8,
-      pixabayApiKey: '',
       dailyReminderEnabled: false,
       setBaseUrl: (baseUrl) => set({ baseUrl }),
       setModel: (model) => set({ model }),
@@ -52,7 +50,6 @@ export const useSettingsStore = create<SettingsState>()(
       setLocalImageModelPath: (localImageModelPath) => set({ localImageModelPath }),
       setLocalMaxTokens: (localMaxTokens) => set({ localMaxTokens }),
       setLocalTemperature: (localTemperature) => set({ localTemperature }),
-      setPixabayApiKey: (pixabayApiKey) => set({ pixabayApiKey }),
       setDailyReminderEnabled: (dailyReminderEnabled) => set({ dailyReminderEnabled }),
     }),
     {
@@ -70,7 +67,6 @@ export const useSettingsStore = create<SettingsState>()(
             localImageModelPath: (s.localImageModelPath as string | undefined) ?? '',
             localMaxTokens: (s.localMaxTokens as number | undefined) ?? 1024,
             localTemperature: (s.localTemperature as number | undefined) ?? 0.8,
-            pixabayApiKey: (s.pixabayApiKey as string | undefined) ?? '',
           };
         }
         if (fromVersion < 4) {

@@ -1,6 +1,5 @@
 /** About screen and in-app outbound links. Update if you fork or change hosting. */
 export const APP_LINKS = {
-  github: 'https://github.com/chartmann1590/AI-Social',
-  website: 'https://chartmann1590.github.io/AI-Social/',
-  buyMeACoffee: 'https://buymeacoffee.com/charleshartmann',
+  website: 'https://chartmann1590.github.io/driftfeed-site/',
+  privacy: 'https://chartmann1590.github.io/driftfeed-site/privacy/',
 } as const;

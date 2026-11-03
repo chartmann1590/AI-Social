@@ -27,7 +27,7 @@ export interface MediaAsset {
   type: 'image' | 'video';
   uri: string;
   thumbnailUri?: string;
-  source?: 'local' | 'pixabay' | 'ai';
+  source?: 'local' | 'ai';
   provider?: string;
 }
 
@@ -49,7 +49,6 @@ export interface AppSettings {
   localImageModelPath: string;
   localMaxTokens: number;
   localTemperature: number;
-  pixabayApiKey: string;
   /** Local daily notification nudging the user back to the feed. No server/push involved. */
   dailyReminderEnabled: boolean;
 }
