@@ -20,6 +20,9 @@ appId: com.hartmannstudios.driftfeed
 - tapOn: "Display name"
 - inputText: "Maya"
 - hideKeyboard
+- tapOn: "Handle"
+- inputText: "maya_drift"
+- hideKeyboard
 - takeScreenshot: 02-profile
 - scrollUntilVisible:
     element: "Continue"
