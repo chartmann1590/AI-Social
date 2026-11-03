@@ -19,9 +19,12 @@ appId: com.hartmannstudios.driftfeed
     timeout: 20000
 - tapOn: "Display name"
 - inputText: "Maya"
-- tapOn: "Handle"
-- inputText: "maya_drift"
 - hideKeyboard
+- takeScreenshot: 02-profile
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    optional: true
 - tapOn: "Continue"
 - extendedWaitUntil:
     visible: "Bring your brain"
@@ -36,7 +39,7 @@ appId: com.hartmannstudios.driftfeed
 - extendedWaitUntil:
     visible: "Test again"
     timeout: 120000
-- takeScreenshot: 02-model-setup
+- takeScreenshot: 03-model-setup
 - scrollUntilVisible:
     element: "Continue"
     direction: DOWN
@@ -49,13 +52,13 @@ appId: com.hartmannstudios.driftfeed
       text: "Open my feed"
       enabled: true
     timeout: 300000
-- takeScreenshot: 03-tour
+- takeScreenshot: 04-tour
 - tapOn: "Open my feed"
 - extendedWaitUntil:
     visible: "zz-never-shown-zz"
     timeout: 150000
     optional: true
-- takeScreenshot: 04-feed
+- takeScreenshot: 05-feed
 - swipe:
     direction: UP
     duration: 600
@@ -63,4 +66,17 @@ appId: com.hartmannstudios.driftfeed
     visible: "zz-never-shown-zz"
     timeout: 60000
     optional: true
-- takeScreenshot: 05-feed-more
+- takeScreenshot: 06-feed-more
+- scrollUntilVisible:
+    element:
+      text: "Report this post"
+    direction: DOWN
+    optional: true
+- tapOn:
+    text: "Report this post"
+    index: 0
+- extendedWaitUntil:
+    visible: "Additional context (optional)"
+    timeout: 20000
+- takeScreenshot: 07-report-dialog
+- tapOn: "Cancel"

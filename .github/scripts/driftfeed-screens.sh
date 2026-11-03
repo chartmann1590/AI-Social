@@ -19,6 +19,7 @@ set +e
 maestro test --debug-output "$OUT/debug" "$ROOT/.maestro/screens.yaml"
 rc=$?
 adb shell screencap -p /sdcard/last.png && adb pull /sdcard/last.png "$OUT/99-last.png" || true
-adb logcat -d > "$OUT/logcat.txt" || true
+adb logcat -d | tail -n 4000 > "$OUT/logcat.txt" || true
+find "$ROOT/.maestro" "$HOME/.maestro/tests" "$ROOT" -maxdepth 3 -name "0*.png" -newer "$APK" -exec cp -n {} "$OUT/" \; 2>/dev/null || true
 ls -la "$OUT"
 exit $rc

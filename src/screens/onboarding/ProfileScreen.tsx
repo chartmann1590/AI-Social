@@ -79,7 +79,7 @@ export const ProfileScreen = ({ navigation }: Props) => {
         Pick a vibe
       </Text>
       <Text variant="bodyMedium" style={[styles.blurb, { color: theme.colors.onSurfaceVariant }]}>
-        This profile only lives on your device. Make it weird if you want — no one's watching.
+        This profile only lives on your device. Pick a name and an avatar you like.
       </Text>
 
       <View style={styles.avatarHeader}>
