@@ -37,11 +37,15 @@ appId: com.hartmannstudios.driftfeed
 - tapOn:
     id: "text-input-outlined"
     index: 0
+- tapOn:
+    point: "88%,52%"
 - eraseText: 60
 - inputText: "http://10.0.2.2:11434"
 - tapOn:
     id: "text-input-outlined"
     index: 1
+- tapOn:
+    point: "88%,59%"
 - eraseText: 40
 - inputText: "qwen2.5:1.5b"
 - hideKeyboard
