@@ -21,6 +21,7 @@ appId: com.hartmannstudios.driftfeed
 - inputText: "Maya"
 - hideKeyboard
 - tapOn: "Handle"
+- eraseText: 30
 - inputText: "maya_drift"
 - hideKeyboard
 - takeScreenshot: 02-profile
@@ -33,10 +34,14 @@ appId: com.hartmannstudios.driftfeed
     visible: "Bring your brain"
     timeout: 20000
 - tapOn: "Use Ollama"
-- tapOn: "Ollama base URL"
+- tapOn:
+    id: "text-input-outlined"
+    index: 0
 - eraseText: 60
 - inputText: "http://10.0.2.2:11434"
-- tapOn: "Model name"
+- tapOn:
+    id: "text-input-outlined"
+    index: 1
 - eraseText: 40
 - inputText: "qwen2.5:1.5b"
 - hideKeyboard
