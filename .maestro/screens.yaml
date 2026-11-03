@@ -62,22 +62,39 @@ appId: com.hartmannstudios.driftfeed
     text: "Continue"
     enabled: true
 - extendedWaitUntil:
-    visible:
+    notVisible:
+      text: "Thinking.*"
+    timeout: 300000
+- extendedWaitUntil:
+    visible: "zz-never-shown-zz"
+    timeout: 4000
+    optional: true
+- takeScreenshot: 04-tour
+- scrollUntilVisible:
+    element:
       text: "Open my feed"
       enabled: true
-    timeout: 300000
-- takeScreenshot: 04-tour
-- tapOn: "Open my feed"
+    direction: DOWN
+    timeout: 120000
+- tapOn:
+    text: "Open my feed"
+    enabled: true
 - extendedWaitUntil:
     visible: "Got it"
-    timeout: 15000
+    timeout: 20000
     optional: true
 - tapOn:
     text: "Got it"
     optional: true
 - extendedWaitUntil:
+    visible: "Report this post"
+    timeout: 300000
+- extendedWaitUntil:
     visible: "zz-never-shown-zz"
-    timeout: 150000
+    timeout: 20000
+    optional: true
+- tapOn:
+    text: "Got it"
     optional: true
 - takeScreenshot: 05-feed
 - swipe:
@@ -85,7 +102,7 @@ appId: com.hartmannstudios.driftfeed
     duration: 600
 - extendedWaitUntil:
     visible: "zz-never-shown-zz"
-    timeout: 60000
+    timeout: 30000
     optional: true
 - takeScreenshot: 06-feed-more
 - scrollUntilVisible:

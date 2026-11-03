@@ -28,7 +28,7 @@ defaults:
     shell: bash
 
 env:
-  APK_RUN_ID: ${{ github.event.inputs.apk_run_id || '41602803419' }}
+  APK_RUN_ID: ${{ github.event.inputs.apk_run_id || '41610742845' }}
 
 jobs:
   screens:
@@ -41,7 +41,7 @@ jobs:
       - name: Get the release APK from the build run
         uses: actions/download-artifact@v4
         with:
-          name: driftfeed-1
+          name: driftfeed-2
           path: android/app/build/outputs
           run-id: ${{ env.APK_RUN_ID }}
           github-token: ${{ github.token }}
