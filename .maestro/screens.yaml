@@ -12,7 +12,7 @@ appId: com.hartmannstudios.driftfeed
 - extendedWaitUntil:
     visible: "Let's go"
     timeout: 60000
-- takeScreenshot: ${OUT}/01-welcome
+- takeScreenshot: 01-welcome
 - tapOn: "Let's go"
 - extendedWaitUntil:
     visible: "Display name"
@@ -23,7 +23,7 @@ appId: com.hartmannstudios.driftfeed
 - tapOn: "Handle"
 - inputText: "maya_drift"
 - hideKeyboard
-- takeScreenshot: ${OUT}/02-profile
+- takeScreenshot: 02-profile
 - scrollUntilVisible:
     element: "Continue"
     direction: DOWN
@@ -44,7 +44,7 @@ appId: com.hartmannstudios.driftfeed
 - extendedWaitUntil:
     visible: "Test again"
     timeout: 120000
-- takeScreenshot: ${OUT}/03-model-setup
+- takeScreenshot: 03-model-setup
 - scrollUntilVisible:
     element: "Continue"
     direction: DOWN
@@ -57,7 +57,7 @@ appId: com.hartmannstudios.driftfeed
       text: "Open my feed"
       enabled: true
     timeout: 300000
-- takeScreenshot: ${OUT}/04-tour
+- takeScreenshot: 04-tour
 - tapOn: "Open my feed"
 - extendedWaitUntil:
     visible: "Got it"
@@ -70,7 +70,7 @@ appId: com.hartmannstudios.driftfeed
     visible: "zz-never-shown-zz"
     timeout: 150000
     optional: true
-- takeScreenshot: ${OUT}/05-feed
+- takeScreenshot: 05-feed
 - swipe:
     direction: UP
     duration: 600
@@ -78,7 +78,7 @@ appId: com.hartmannstudios.driftfeed
     visible: "zz-never-shown-zz"
     timeout: 60000
     optional: true
-- takeScreenshot: ${OUT}/06-feed-more
+- takeScreenshot: 06-feed-more
 - scrollUntilVisible:
     element:
       text: "Report this post"
@@ -90,5 +90,5 @@ appId: com.hartmannstudios.driftfeed
 - extendedWaitUntil:
     visible: "Additional context (optional)"
     timeout: 20000
-- takeScreenshot: ${OUT}/07-report-dialog
+- takeScreenshot: 07-report-dialog
 - tapOn: "Cancel"

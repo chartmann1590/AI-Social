@@ -108,4 +108,5 @@ jobs:
         with:
           name: driftfeed-store-screens
           path: driftfeed-screens
+          include-hidden-files: true
           if-no-files-found: warn
