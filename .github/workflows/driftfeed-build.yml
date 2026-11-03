@@ -384,3 +384,110 @@ jobs:
             android/app/build/outputs/apk/release/app-release.apk
           retention-days: 90
           if-no-files-found: error
+
+      - name: Split the AAB into small parts (for download through size-limited proxies)
+        run: |
+          set -euo pipefail
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          mkdir -p aab-parts
+          ls -la "$AAB" android/app/build/outputs/apk/release/app-release.apk
+          sha256sum "$AAB" | tee aab-parts/SHA256SUMS.txt
+          stat -c '%s' "$AAB" > aab-parts/SIZE.txt
+          split -b 40m -d -a 2 "$AAB" aab-parts/aab.part-
+          ls -la aab-parts
+
+      - name: Upload AAB part 00
+        if: hashFiles('aab-parts/aab.part-00') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-part-00
+          path: |
+            aab-parts/aab.part-00
+            aab-parts/SHA256SUMS.txt
+            aab-parts/SIZE.txt
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload AAB part 01
+        if: hashFiles('aab-parts/aab.part-01') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-part-01
+          path: |
+            aab-parts/aab.part-01
+            aab-parts/SHA256SUMS.txt
+            aab-parts/SIZE.txt
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload AAB part 02
+        if: hashFiles('aab-parts/aab.part-02') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-part-02
+          path: |
+            aab-parts/aab.part-02
+            aab-parts/SHA256SUMS.txt
+            aab-parts/SIZE.txt
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload AAB part 03
+        if: hashFiles('aab-parts/aab.part-03') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-part-03
+          path: |
+            aab-parts/aab.part-03
+            aab-parts/SHA256SUMS.txt
+            aab-parts/SIZE.txt
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload AAB part 04
+        if: hashFiles('aab-parts/aab.part-04') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-part-04
+          path: |
+            aab-parts/aab.part-04
+            aab-parts/SHA256SUMS.txt
+            aab-parts/SIZE.txt
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload AAB part 05
+        if: hashFiles('aab-parts/aab.part-05') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-part-05
+          path: |
+            aab-parts/aab.part-05
+            aab-parts/SHA256SUMS.txt
+            aab-parts/SIZE.txt
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload AAB part 06
+        if: hashFiles('aab-parts/aab.part-06') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-part-06
+          path: |
+            aab-parts/aab.part-06
+            aab-parts/SHA256SUMS.txt
+            aab-parts/SIZE.txt
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload AAB part 07
+        if: hashFiles('aab-parts/aab.part-07') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-part-07
+          path: |
+            aab-parts/aab.part-07
+            aab-parts/SHA256SUMS.txt
+            aab-parts/SIZE.txt
+          compression-level: 0
+          retention-days: 30
