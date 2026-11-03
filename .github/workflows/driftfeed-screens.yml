@@ -1,0 +1,111 @@
+# Store screenshots for Driftfeed from an already-built release APK (no rebuild).
+name: Driftfeed store screenshots
+
+on:
+  push:
+    branches: [relaunch-safe]
+    paths:
+      - '.maestro/screens.yaml'
+      - '.github/scripts/driftfeed-screens.sh'
+      - '.github/workflows/driftfeed-screens.yml'
+  workflow_dispatch:
+    inputs:
+      apk_run_id:
+        description: 'Run id of the Driftfeed build whose APK to use'
+        required: false
+        default: ''
+
+concurrency:
+  group: driftfeed-screens
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  APK_RUN_ID: ${{ github.event.inputs.apk_run_id || '41602803419' }}
+
+jobs:
+  screens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get the release APK from the build run
+        uses: actions/download-artifact@v4
+        with:
+          name: driftfeed-1
+          path: android/app/build/outputs
+          run-id: ${{ env.APK_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Show APK
+        run: ls -la android/app/build/outputs/apk/release/ android/app/build/outputs/bundle/release/
+
+      - name: Enable KVM (emulator hardware acceleration)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-android-33-google_apis-x86_64-v1
+
+      - name: Pre-create AVD snapshot (cache miss only)
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: echo "AVD created and cached."
+
+      - name: Start Ollama on the host for store screenshots
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          sudo systemctl stop ollama || true
+          (OLLAMA_HOST=0.0.0.0:11434 nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+          sleep 5
+          ollama pull qwen2.5:1.5b
+          curl -s http://127.0.0.1:11434/api/tags
+
+      - name: Store screenshots (Maestro + real model via Ollama)
+        continue-on-error: true
+        timeout-minutes: 30
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash .github/scripts/driftfeed-screens.sh
+
+      - name: Upload store screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: driftfeed-store-screens
+          path: driftfeed-screens
+          if-no-files-found: warn

@@ -12,7 +12,7 @@ appId: com.hartmannstudios.driftfeed
 - extendedWaitUntil:
     visible: "Let's go"
     timeout: 60000
-- takeScreenshot: 01-welcome
+- takeScreenshot: ${OUT}/01-welcome
 - tapOn: "Let's go"
 - extendedWaitUntil:
     visible: "Display name"
@@ -23,7 +23,7 @@ appId: com.hartmannstudios.driftfeed
 - tapOn: "Handle"
 - inputText: "maya_drift"
 - hideKeyboard
-- takeScreenshot: 02-profile
+- takeScreenshot: ${OUT}/02-profile
 - scrollUntilVisible:
     element: "Continue"
     direction: DOWN
@@ -34,15 +34,17 @@ appId: com.hartmannstudios.driftfeed
     timeout: 20000
 - tapOn: "Use Ollama"
 - tapOn: "Ollama base URL"
+- eraseText: 60
 - inputText: "http://10.0.2.2:11434"
 - tapOn: "Model name"
+- eraseText: 40
 - inputText: "qwen2.5:1.5b"
 - hideKeyboard
 - tapOn: "Test connection"
 - extendedWaitUntil:
     visible: "Test again"
     timeout: 120000
-- takeScreenshot: 03-model-setup
+- takeScreenshot: ${OUT}/03-model-setup
 - scrollUntilVisible:
     element: "Continue"
     direction: DOWN
@@ -55,7 +57,7 @@ appId: com.hartmannstudios.driftfeed
       text: "Open my feed"
       enabled: true
     timeout: 300000
-- takeScreenshot: 04-tour
+- takeScreenshot: ${OUT}/04-tour
 - tapOn: "Open my feed"
 - extendedWaitUntil:
     visible: "Got it"
@@ -68,7 +70,7 @@ appId: com.hartmannstudios.driftfeed
     visible: "zz-never-shown-zz"
     timeout: 150000
     optional: true
-- takeScreenshot: 05-feed
+- takeScreenshot: ${OUT}/05-feed
 - swipe:
     direction: UP
     duration: 600
@@ -76,7 +78,7 @@ appId: com.hartmannstudios.driftfeed
     visible: "zz-never-shown-zz"
     timeout: 60000
     optional: true
-- takeScreenshot: 06-feed-more
+- takeScreenshot: ${OUT}/06-feed-more
 - scrollUntilVisible:
     element:
       text: "Report this post"
@@ -88,5 +90,5 @@ appId: com.hartmannstudios.driftfeed
 - extendedWaitUntil:
     visible: "Additional context (optional)"
     timeout: 20000
-- takeScreenshot: 07-report-dialog
+- takeScreenshot: ${OUT}/07-report-dialog
 - tapOn: "Cancel"
