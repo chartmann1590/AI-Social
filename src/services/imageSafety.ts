@@ -1,6 +1,10 @@
 /**
  * Content safety filters for AI Social (prompts and AI text).
  *
+ * Image generation, image links and media import were REMOVED from the
+ * app in the relaunch (Nov 2026): the app is text-only. The image checks
+ * below stay as a library but no screen calls them.
+ *
  * Why this exists: Google Play suspended com.charles.aisocial on
  * 2026-10-28 for a Sexual Content / AI-Generated Content violation:
  * the Compose screen's image generator produced a nude image from a
@@ -275,7 +279,23 @@ const TEXT_PATTERNS: RegExp[] = [
   /\bmake love\b/, /\blovemaking\b/, /\bone night stand\b/, /\bhook ?up\b/,
 ];
 
-const TEXT_FLAT_WORDS: string[] = ['porn', 'nsfw', 'hentai', 'onlyfans', 'masturbat', 'blowjob', 'handjob', 'rule34', 'jailbait'];
+const TEXT_FLAT_WORDS: string[] = ['porn', 'nsfw', 'hentai', 'onlyfans', 'masturbat', 'blowjob', 'handjob', 'rule34', 'jailbait', 'fuck', 'fck', 'motherf'];
+
+/**
+ * Profanity (Google Play "Sexual Content and Profanity" policy). AI text and
+ * user posts must stay family-friendly, so strong swear words and common
+ * slurs are blocked the same way as sexual terms. False positives are the
+ * accepted failure mode.
+ */
+export const PROFANITY_PATTERNS: RegExp[] = [
+  /\bcunt\w*\b/, /\bshit\w*\b/, /\bbullshit\b/, /\bbitch\w*\b/, /\basshole(s)?\b/, /\bdickhead(s)?\b/, /\bdick(s)?\b/,
+  /\bcock(s)?\b/, /\bpuss(y|ies)\b/, /\bbastard(s)?\b/, /\bwanker(s)?\b/, /\btwat(s)?\b/, /\bprick(s)?\b/,
+  /\bdamn ?it\b/, /\bgoddamn\w*\b/, /\bwtf\b/, /\bstfu\b/, /\bfml\b/,
+  /\bn[i1]gg\w*\b/, /\bfag\w*\b/, /\bretard\w*\b/, /\bspic(s)?\b/, /\bkike(s)?\b/, /\bchink(s)?\b/, /\btrann(y|ies)\b/,
+];
+
+export const BLOCKED_PROFANITY_MESSAGE =
+  'Not allowed: AI Social keeps posts family-friendly, with no swearing or slurs. Try different words.';
 
 export function checkTextSafety(text: string): ImagePromptCheck {
   const trimmed = (text ?? '').trim();
@@ -283,6 +303,9 @@ export function checkTextSafety(text: string): ImagePromptCheck {
   const { spacedForms, flatForms } = normalizedVariants(trimmed);
   if (nonLatinHit(trimmed) || firstHit(spacedForms, TEXT_PATTERNS)) {
     return { allowed: false, reason: BLOCKED_TEXT_MESSAGE };
+  }
+  if (firstHit(spacedForms, PROFANITY_PATTERNS)) {
+    return { allowed: false, reason: BLOCKED_PROFANITY_MESSAGE };
   }
   for (const flat of flatForms) {
     for (const w of TEXT_FLAT_WORDS) {

@@ -149,7 +149,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPress }) => {
   };
 
   const hidden = useModerationStore((s) => isHiddenContent(s, post.id, post.author.handle));
-  const media = post.media ?? [];
+  // Media is not shown: the app is text-only (no image generation, links or imports).
+  const media: MediaAsset[] = [];
 
   const relative = formatRelativeTime(post.createdAt);
   const subtitle = `${post.author.handle} · ${relative}`;

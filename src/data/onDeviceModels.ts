@@ -30,17 +30,6 @@ const HF = 'https://huggingface.co';
 
 export const ON_DEVICE_MODEL_CATALOG: OnDeviceModelEntry[] = [
   {
-    id: 'sd-v1-5-pruned',
-    family: 'sd15',
-    name: 'Stable Diffusion v1.5 (fp16 safetensors)',
-    description:
-      'Base Stable Diffusion v1.5 checkpoint for local image generation pipelines. Large download, intended for advanced devices.',
-    downloadUrl: `${HF}/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors`,
-    filename: 'v1-5-pruned-emaonly.safetensors',
-    approxSizeBytes: 4_260_000_000,
-    hfRepoUrl: `${HF}/runwayml/stable-diffusion-v1-5`,
-  },
-  {
     id: 'gemma4-e2b-litertlm',
     family: 'gemma4',
     name: 'Gemma 4 E2B IT (.litertlm, ~2.6 GB)',

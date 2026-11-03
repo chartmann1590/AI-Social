@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { PostCard } from '../components/PostCard';
-import { usePostCommentsStore, useUserPostsStore, useUserStore, useSettingsStore } from '../store';
+import { usePostCommentsStore, useUserPostsStore, useUserStore } from '../store';
 import { MediaAsset, Post } from '../types';
 import { avatarUrl } from './onboarding/avatarUtils';
 
@@ -109,46 +109,6 @@ function selectMediaForProfile(posts: Post[]): ProfileMediaItem[] {
   return items;
 }
 
-async function searchPixabayMedia(apiKey: string, query: string): Promise<MediaAsset[]> {
-  const key = apiKey.trim();
-  if (!key) {
-    throw new Error('Set your Pixabay API key in Settings first.');
-  }
-  const q = encodeURIComponent(query.trim() || 'nature');
-  const [imageRes, videoRes] = await Promise.all([
-    fetch(`https://pixabay.com/api/?key=${encodeURIComponent(key)}&q=${q}&image_type=photo&per_page=6&safesearch=true`),
-    fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(key)}&q=${q}&per_page=6&safesearch=true`),
-  ]);
-  if (!imageRes.ok || !videoRes.ok) {
-    throw new Error(`Pixabay request failed (${imageRes.status}/${videoRes.status})`);
-  }
-  const images = (await imageRes.json()) as { hits: any[] };
-  const videos = (await videoRes.json()) as { hits: any[] };
-
-  const imageAssets: MediaAsset[] = images.hits.map((hit) => ({
-    id: `pixabay-image-${hit.id}`,
-    type: 'image' as const,
-    uri: hit.largeImageURL || hit.webformatURL,
-    thumbnailUri: hit.webformatURL,
-    source: 'pixabay' as const,
-    provider: `Pixabay · ${hit.user}`,
-  }));
-  const videoAssets: MediaAsset[] = videos.hits
-    .map((hit) => ({
-      id: `pixabay-video-${hit.id}`,
-      type: 'video' as const,
-      uri: hit.videos?.medium?.url || hit.videos?.small?.url || hit.videos?.tiny?.url || '',
-      thumbnailUri: hit.picture_id
-        ? `https://i.vimeocdn.com/video/${hit.picture_id}_295x166.jpg`
-        : undefined,
-      source: 'pixabay' as const,
-      provider: `Pixabay · ${hit.user}`,
-    }))
-    .filter((v) => !!v.uri);
-
-  return [...imageAssets, ...videoAssets];
-}
-
 export const ProfileScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation<any>();
@@ -157,12 +117,8 @@ export const ProfileScreen = () => {
   const posts = useUserPostsStore((s) => s.posts);
   const addUserPost = useUserPostsStore((s) => s.addPost);
   const commentsByPostId = usePostCommentsStore((s) => s.commentsByPostId);
-  const pixabayApiKey = useSettingsStore((s) => s.pixabayApiKey);
 
   const [tab, setTab] = useState<Tab>('posts');
-  const [mediaQuery, setMediaQuery] = useState('');
-  const [searchingMedia, setSearchingMedia] = useState(false);
-  const [remoteMedia, setRemoteMedia] = useState<MediaAsset[]>([]);
 
   const totalLikes = useMemo(
     () => posts.reduce((sum, p) => sum + (p.likes || 0), 0),
@@ -197,39 +153,6 @@ export const ProfileScreen = () => {
     }
     return map;
   }, [posts]);
-
-  const runMediaSearch = async () => {
-    try {
-      setSearchingMedia(true);
-      const assets = await searchPixabayMedia(pixabayApiKey, mediaQuery);
-      setRemoteMedia(assets);
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
-      Alert.alert('Media search failed', detail);
-    } finally {
-      setSearchingMedia(false);
-    }
-  };
-
-  const importMediaToProfile = (asset: MediaAsset) => {
-    const postId = `media-${Date.now()}`;
-    const newPost: Post = {
-      id: postId,
-      author: {
-        id: 'me',
-        name: profile.name || 'Me',
-        handle: `@${profile.handle || 'me'}`,
-        avatar: avatarUrl(profile.avatarSeed || 'me', 128),
-      },
-      content: asset.provider ? `Imported from ${asset.provider}` : 'Imported media',
-      createdAt: new Date().toISOString(),
-      likes: 0,
-      commentsCount: 0,
-      media: [{ ...asset, id: `${asset.id}-${postId}` }],
-    };
-    addUserPost(newPost);
-    Alert.alert('Imported', 'Media added to your profile.');
-  };
 
   const renderHeader = () => (
     <View>
@@ -340,7 +263,6 @@ export const ProfileScreen = () => {
       <View style={styles.tabsRow}>
         <TabChip label="Posts" active={tab === 'posts'} onPress={() => setTab('posts')} />
         <TabChip label="Replies" active={tab === 'replies'} onPress={() => setTab('replies')} />
-        <TabChip label="Media" active={tab === 'media'} onPress={() => setTab('media')} />
       </View>
 
       <Divider />
@@ -393,47 +315,6 @@ export const ProfileScreen = () => {
       )}
     </Pressable>
   );
-
-  const renderRemoteMedia = () => {
-    if (tab !== 'media') return null;
-    return (
-      <View style={styles.remoteSearchWrap}>
-        <RNTextInput
-          style={[
-            styles.searchInput,
-            { borderColor: theme.colors.outline, color: theme.colors.onSurface },
-          ]}
-          placeholder="Search free images and videos"
-          placeholderTextColor={theme.colors.onSurfaceVariant}
-          value={mediaQuery}
-          onChangeText={setMediaQuery}
-        />
-        <Button
-          mode="contained-tonal"
-          icon="magnify"
-          onPress={runMediaSearch}
-          loading={searchingMedia}
-          disabled={searchingMedia}
-          style={styles.searchBtn}
-        >
-          Search Pixabay
-        </Button>
-        {remoteMedia.map((asset) => (
-          <View key={asset.id} style={styles.remoteResultRow}>
-            <Image source={{ uri: asset.thumbnailUri || asset.uri }} style={styles.remoteThumb} />
-            <View style={styles.remoteMeta}>
-              <Text variant="bodySmall" numberOfLines={2}>
-                {asset.provider || 'Pixabay media'}
-              </Text>
-              <Button mode="outlined" compact onPress={() => importMediaToProfile(asset)}>
-                Import
-              </Button>
-            </View>
-          </View>
-        ))}
-      </View>
-    );
-  };
 
   const renderEmpty = () => {
     if (tab === 'replies') {
@@ -539,7 +420,6 @@ export const ProfileScreen = () => {
             : (renderMediaTile as any)
       }
       ListHeaderComponent={renderHeader}
-      ListFooterComponent={renderRemoteMedia}
       ListEmptyComponent={renderEmpty}
       contentContainerStyle={styles.listContent}
       numColumns={tab === 'media' ? 3 : 1}

@@ -208,33 +208,6 @@ export const SettingsScreen = () => {
         mode="outlined"
         style={[styles.input, { backgroundColor: theme.colors.surface }]}
       />
-      <TextInput
-        label="Local image model absolute path"
-        value={localImageModelPath}
-        onChangeText={setLocalImageModelPath}
-        mode="outlined"
-        placeholder="/data/user/0/.../v1-5-pruned-emaonly.safetensors"
-        style={[styles.input, { backgroundColor: theme.colors.surface }]}
-      />
-
-      <Divider style={styles.divider} />
-
-      <Text variant="titleSmall" style={styles.sectionTitle}>
-        Media search
-      </Text>
-      <TextInput
-        label="Pixabay API key"
-        value={pixabayApiKey}
-        onChangeText={setPixabayApiKey}
-        mode="outlined"
-        autoCapitalize="none"
-        autoCorrect={false}
-        style={[styles.input, { backgroundColor: theme.colors.surface }]}
-      />
-      <Text variant="bodySmall" style={[styles.helper, { color: theme.colors.onSurfaceVariant }]}>
-        Create a free key at pixabay.com/api/docs and paste it here for Media tab search.
-      </Text>
-
       <Divider style={styles.divider} />
 
       <Text variant="titleSmall" style={styles.sectionTitle}>

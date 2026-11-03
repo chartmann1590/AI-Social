@@ -15,8 +15,6 @@ interface ShareablePostCardProps {
  * screenshot someone shares outside the app.
  */
 export const ShareablePostCard = forwardRef<ViewShot, ShareablePostCardProps>(({ post }, ref) => {
-  const media = post.media?.[0];
-
   return (
     <ViewShot ref={ref} options={{ format: 'png', quality: 1 }}>
       <View style={styles.card}>
@@ -28,9 +26,6 @@ export const ShareablePostCard = forwardRef<ViewShot, ShareablePostCardProps>(({
           </View>
         </View>
         <Text variant="bodyLarge" style={styles.content}>{post.content}</Text>
-        {media?.type === 'image' && (
-          <Image source={{ uri: media.uri }} style={styles.media} resizeMode="cover" />
-        )}
         <View style={styles.footer}>
           <Text variant="labelMedium" style={styles.watermark}>AI Social — a make-believe feed, written by AI</Text>
         </View>
