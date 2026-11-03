@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, Platform, NativeModules } from 'react-native';
+import { View, ScrollView, StyleSheet, Platform, NativeModules, Linking } from 'react-native';
+
+const SUPPORT_MAILTO = 'mailto:me@charleshartmann.com?subject=Driftfeed%20feedback';
 import { useNavigation } from '@react-navigation/native';
 import {
   TextInput,
@@ -96,7 +98,7 @@ export const SettingsScreen = () => {
       </Button>
 
       <Button mode="contained-tonal" icon="download" onPress={() => navigation.navigate('Models')} style={styles.modelsLink}>
-        Download models (Gemma, Qwen, DeepSeek, SD v1.5)
+        Download models (Gemma, Qwen, DeepSeek)
       </Button>
 
       <Button mode="contained-tonal" icon="gift-outline" onPress={() => navigation.navigate('Rewards')} style={styles.modelsLink}>
@@ -107,11 +109,11 @@ export const SettingsScreen = () => {
         mode="contained-tonal"
         icon="bug-outline"
         onPress={() => {
-          NativeModules.AISocialFeedback?.launchFeedback();
+          Linking.openURL(SUPPORT_MAILTO).catch(() => undefined);
         }}
         style={styles.modelsLink}
       >
-        Support & Feedback (Bug Reporter)
+        Support and feedback (email)
       </Button>
 
       <View style={styles.row}>

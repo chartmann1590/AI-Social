@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { crashlyticsLog, getAnalytics, getCrashlytics, logEvent, recordError } from './firebase';
 
 export type ContentReportReason =
   | 'Sexual or explicit content'
@@ -24,24 +24,11 @@ export const CONTENT_REPORT_REASONS: ContentReportReason[] = [
   'Other',
 ];
 
-type NativeFeedback = {
-  reportContent(
-    contentType: 'post' | 'comment',
-    content: string,
-    reason: string,
-    reasonLabel: string,
-    note: string | null,
-    model: string | null,
-  ): Promise<number>;
-};
-
-const NativeFeedback = (NativeModules as { AISocialFeedback?: NativeFeedback }).AISocialFeedback;
-
 /**
- * Submits a content report via the native bridge (not a direct fetch from JS) so the
- * feedback-proxy shared secret never has to be embedded in the JS bundle, which is
- * trivially extractable from a decompiled APK unlike a compiled native BuildConfig
- * constant. See native-src/feedback/FeedbackModule.kt.
+ * Sends a copy of a content report to the developer through Firebase Crashlytics
+ * (a non-fatal report the developer reviews in the private Firebase console) plus an
+ * Analytics event with the reason. Nothing is posted anywhere public.
+ * Crashlytics queues the report on the phone and uploads it when the phone is online.
  */
 export async function reportContent(params: {
   contentType: 'post' | 'comment' | 'image';
@@ -50,19 +37,20 @@ export async function reportContent(params: {
   note?: string;
   model?: string;
 }): Promise<number> {
-  if (Platform.OS !== 'android' || !NativeFeedback) {
-    throw new Error('Reporting is only available on Android release/dev builds.');
-  }
-  // The native bridge knows posts and comments; an image report travels as a
-  // post report whose text says it is about an image.
-  const nativeType = params.contentType === 'comment' ? 'comment' : 'post';
-  const content = params.contentType === 'image' ? `[image] ${params.content}` : params.content;
-  return NativeFeedback.reportContent(
-    nativeType,
-    content,
-    params.reason,
-    REASON_LABELS[params.reason],
-    params.note?.trim() || null,
-    params.model?.trim() || null,
-  );
+  const crashlytics = getCrashlytics();
+  const excerpt = params.content.replace(/\s+/g, ' ').slice(0, 900);
+  const note = params.note?.trim().slice(0, 500) || '-';
+  const model = params.model?.trim().slice(0, 120) || '-';
+  crashlyticsLog(crashlytics, `content_report type=${params.contentType} reason=${params.reason}`);
+  crashlyticsLog(crashlytics, `content_report model=${model}`);
+  crashlyticsLog(crashlytics, `content_report note=${note}`);
+  crashlyticsLog(crashlytics, `content_report excerpt=${excerpt}`);
+  const err = new Error(`[Content Report] ${params.reason} (${params.contentType}): ${excerpt.slice(0, 200)}`);
+  err.name = 'ContentReport';
+  recordError(crashlytics, err);
+  await logEvent(getAnalytics(), 'content_report', {
+    content_type: params.contentType,
+    reason: REASON_LABELS[params.reason],
+  });
+  return 0;
 }

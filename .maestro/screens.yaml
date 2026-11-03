@@ -58,6 +58,13 @@ appId: com.hartmannstudios.driftfeed
 - takeScreenshot: 04-tour
 - tapOn: "Open my feed"
 - extendedWaitUntil:
+    visible: "Got it"
+    timeout: 15000
+    optional: true
+- tapOn:
+    text: "Got it"
+    optional: true
+- extendedWaitUntil:
     visible: "zz-never-shown-zz"
     timeout: 150000
     optional: true
