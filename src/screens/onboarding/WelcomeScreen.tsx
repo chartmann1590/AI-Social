@@ -91,8 +91,8 @@ export const WelcomeScreen = ({ navigation }: Props) => {
           A make-believe social feed,{`\n`}powered by an LLM that lives on your phone.
         </Text>
         <Text variant="bodyMedium" style={[styles.body, { color: theme.colors.onSurfaceVariant }]}>
-          No accounts. No servers. No strangers. Just you, your model, and a feed full of fictional people you'll
-          probably get a little attached to.
+          No account and no strangers. Just you, your model, and a feed of fictional AI authors. Everything in it
+          is made up by AI.
         </Text>
 
         <Button
@@ -104,7 +104,7 @@ export const WelcomeScreen = ({ navigation }: Props) => {
           Let's go
         </Button>
         <Text variant="labelSmall" style={{ marginTop: 12, color: theme.colors.onSurfaceVariant }}>
-          ~2 minutes to set up · works fully offline once installed
+          ~2 minutes to set up · works offline once a model is downloaded
         </Text>
       </Animated.View>
     </View>
