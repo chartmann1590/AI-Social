@@ -33,7 +33,14 @@ shot 05-ollama-tested
 scrollto (?i)^continue$
 wait 120
 shot 06-tour
-scrollto (?i)^open my feed$
+sh input swipe 600 1200 600 300 500
+wait 1
+sh input swipe 600 1200 600 300 500
+wait 1
+sh input swipe 600 1200 600 300 500
+wait 2
+shot 06b-tour-bottom
+tap (?i)^open my feed$
 wait 60
 adclose
 shot 07-feed
