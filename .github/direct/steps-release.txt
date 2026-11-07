@@ -1,0 +1,71 @@
+launch
+wait 25
+shot 01-welcome
+tapxy 500 562
+wait 6
+shot 02-profile-empty
+tap (?i)^display name$
+type Maya
+sh dumpsys input_method | grep -q 'mInputShown=true' && input keyevent 4
+tap (?i)^handle$
+type maya_tab
+sh dumpsys input_method | grep -q 'mInputShown=true' && input keyevent 4
+wait 1
+shot 03-profile
+scrollto (?i)^continue$
+wait 5
+shot 04-brain-choice
+tap (?i)^use ollama$
+wait 3
+tap ^http://localhost:11434$
+sh input keyevent 123
+sh input keyevent 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67
+type http://10.0.2.2:11434
+tap ^llama3\.2$
+sh input keyevent 123
+sh input keyevent 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67
+type qwen2.5:1.5b
+sh dumpsys input_method | grep -q 'mInputShown=true' && input keyevent 4
+wait 1
+scrollto (?i)^test connection$
+wait 30
+shot 05-ollama-tested
+scrollto (?i)^continue$
+wait 120
+shot 06-tour
+sh input swipe 600 1200 600 300 500
+wait 1
+sh input swipe 600 1200 600 300 500
+wait 1
+sh input swipe 600 1200 600 300 500
+wait 2
+shot 06b-tour-bottom
+tap (?i)^open my feed$
+wait 60
+adclose
+shot 07-feed
+swipeup
+wait 3
+shot 08-feed-scrolled
+tap (?i)^compose$
+wait 4
+adclose
+shot 09-compose
+tap (?i)^models$
+wait 4
+adclose
+shot 10-models
+tap (?i)^rewards$
+wait 4
+adclose
+shot 11-rewards
+tap (?i)^settings$
+wait 4
+adclose
+shot 12-settings
+swipeup
+swipeup
+shot 13-settings-bottom
+tap (?i)^profile$
+wait 4
+shot 14-profile
