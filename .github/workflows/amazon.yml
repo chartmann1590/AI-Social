@@ -1,0 +1,231 @@
+# Amazon Appstore (Fire) build of Driftfeed (com.hartmannstudios.driftfeed), from relaunch-safe. Same code as the Play build
+# (Driftfeed has no Play links or Play review prompt). Tablet emulator test without Google Play services; DRAFT release only.
+name: Amazon Appstore build + emulator test
+on:
+  push:
+    branches:
+    - amazon
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: amazon-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  amazon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: npm
+        cache-dependency-path: package-lock.json
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: platform-tools
+    - name: Install Android 16 KB verification tools
+      env:
+        BUNDLETOOL_VERSION: 1.18.3
+      run: |
+        set -euo pipefail
+        sdkmanager "build-tools;35.0.0" "ndk;28.2.13676358"
+        curl -fsSL \
+          -o "$RUNNER_TEMP/bundletool.jar" \
+          "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar"
+        echo "BUNDLETOOL_JAR=$RUNNER_TEMP/bundletool.jar" >> "$GITHUB_ENV"
+    - name: Install npm dependencies
+      run: npm ci
+    - name: Ensure src/config.ts (gitignored locally; required for tsc + release bundle)
+      run: |
+        set -euo pipefail
+        if [ ! -f src/config.ts ]; then
+          cp src/config.example.ts src/config.ts
+          echo "Created src/config.ts from config.example.ts for CI bundling."
+        fi
+    - name: Jest unit tests (gate the release on green tests)
+      run: npm run test:ci
+    - name: Pin version (new app com.hartmannstudios.driftfeed)
+      id: bump
+      run: |
+        set -euo pipefail
+        v=$(cat ci/driftfeed-version-code)
+        echo "version_code=$v" >> "$GITHUB_OUTPUT"
+        echo "PLAY_STORE_VERSION_CODE=$v" >> "$GITHUB_ENV"
+        echo "ANDROID_VERSION_CODE=$v" >> "$GITHUB_ENV"
+        echo "ANDROID_VERSION_NAME=1.0.0" >> "$GITHUB_ENV"
+        echo "versionCode $v / versionName 1.0.0"
+    - name: Load AdMob IDs from GitHub Secrets
+      env:
+        SEC_APP: ${{ secrets.DRIFTFEED_ADMOB_ANDROID_APP_ID }}
+        SEC_BANNER: ${{ secrets.DRIFTFEED_ADMOB_BANNER_AD_UNIT_ID }}
+        SEC_INT: ${{ secrets.DRIFTFEED_ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+        SEC_NATIVE: ${{ secrets.DRIFTFEED_ADMOB_NATIVE_AD_UNIT_ID }}
+        SEC_REWARD: ${{ secrets.DRIFTFEED_ADMOB_REWARDED_AD_UNIT_ID }}
+        SEC_DELAY: ${{ secrets.ADMOB_DELAY_APP_MEASUREMENT_INIT }}
+        SEC_OPT_INIT: ${{ secrets.ADMOB_OPTIMIZE_INITIALIZATION }}
+        SEC_OPT_LOAD: ${{ secrets.ADMOB_OPTIMIZE_AD_LOADING }}
+      run: |
+        set -euo pipefail
+        missing=()
+        [ -n "${SEC_APP:-}" ]    || missing+=(ADMOB_ANDROID_APP_ID)
+        [ -n "${SEC_BANNER:-}" ] || missing+=(ADMOB_BANNER_AD_UNIT_ID)
+        [ -n "${SEC_INT:-}" ]    || missing+=(ADMOB_INTERSTITIAL_AD_UNIT_ID)
+        [ -n "${SEC_NATIVE:-}" ] || missing+=(ADMOB_NATIVE_AD_UNIT_ID)
+        [ -n "${SEC_REWARD:-}" ] || missing+=(ADMOB_REWARDED_AD_UNIT_ID)
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "::error::Missing required GitHub Secrets: ${missing[*]}. Set them via gh secret set."
+          exit 1
+        fi
+        # Expose to subsequent steps. app.config.js reads ADMOB_ANDROID_APP_ID from env when set,
+        # which lets `expo prebuild` succeed without an android/ directory existing yet (prebuild
+        # creates it). After prebuild we mirror these into android/local.properties for the record.
+        {
+          echo "ADMOB_ANDROID_APP_ID=${SEC_APP}"
+          echo "ADMOB_BANNER_AD_UNIT_ID=${SEC_BANNER}"
+          echo "ADMOB_INTERSTITIAL_AD_UNIT_ID=${SEC_INT}"
+          echo "ADMOB_NATIVE_AD_UNIT_ID=${SEC_NATIVE}"
+          echo "ADMOB_REWARDED_AD_UNIT_ID=${SEC_REWARD}"
+          echo "ADMOB_DELAY_APP_MEASUREMENT_INIT=${SEC_DELAY:-false}"
+          echo "ADMOB_OPTIMIZE_INITIALIZATION=${SEC_OPT_INIT:-true}"
+          echo "ADMOB_OPTIMIZE_AD_LOADING=${SEC_OPT_LOAD:-true}"
+        } >> "$GITHUB_ENV"
+        echo "Loaded 5 AdMob IDs from GitHub Secrets."
+    - name: Decode upload keystore (Play upload signing)
+      env:
+        ANDROID_CI_KEYSTORE_BASE64: ${{ secrets.ANDROID_CI_KEYSTORE_BASE64 }}
+        ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+        ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+        ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+      run: "set -euo pipefail\nif [ -z \"${ANDROID_CI_KEYSTORE_BASE64:-}\" ] \\\n   || [ -z \"${ANDROID_CI_KEYSTORE_PASSWORD:-}\" ] \\\n   || [ -z \"${ANDROID_CI_KEY_ALIAS:-}\" ] \\\n   || [ -z \"${ANDROID_CI_KEY_PASSWORD:-}\"\
+        \ ]; then\n  echo \"::warning::Play upload keystore secrets not fully set \u2014 release will be signed with the debug keystore (CI OK; not for Play production).\"\n  exit 0\nfi\n# Strip every whitespace\
+        \ char so any encoding accident (CR/LF/space/tab) survives.\nprintf '%s' \"$ANDROID_CI_KEYSTORE_BASE64\" | tr -d ' \\t\\r\\n' | base64 -d --ignore-garbage > \"$RUNNER_TEMP/upload.jks\"\nif ! test\
+        \ -s \"$RUNNER_TEMP/upload.jks\"; then\n  echo \"::error::Keystore secret decoded to empty file. Re-set ANDROID_CI_KEYSTORE_BASE64 (single-line base64 of upload.jks).\"\n  exit 1\nfi\nchmod 600\
+        \ \"$RUNNER_TEMP/upload.jks\"\nkeytool -list -keystore \"$RUNNER_TEMP/upload.jks\" -storepass \"$ANDROID_CI_KEYSTORE_PASSWORD\" -alias \"$ANDROID_CI_KEY_ALIAS\" >/dev/null \\\n  || { echo \"::error::Keystore\
+        \ loaded but alias/password mismatch (alias=$ANDROID_CI_KEY_ALIAS).\"; exit 1; }\necho \"ANDROID_CI_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks\" >> \"$GITHUB_ENV\"\necho \"Keystore verified.\"\n"
+    - name: Expo prebuild (Android)
+      run: npx expo prebuild --platform android --no-install
+    - name: Set the Driftfeed application ID (Kotlin namespace stays com.charles.aisocial)
+      run: |
+        set -euo pipefail
+        g=android/app/build.gradle
+        sed -i -E "s/applicationId ['\"]com\.charles\.aisocial['\"]/applicationId 'com.hartmannstudios.driftfeed'/" "$g"
+        grep -n "applicationId 'com.hartmannstudios.driftfeed'" "$g"
+        ! grep -n "applicationId 'com.charles.aisocial'" "$g"
+    - name: Materialize google-services.json
+      env:
+        GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON_DRIFTFEED }}
+      run: |
+        set -euo pipefail
+        if [ -z "${GOOGLE_SERVICES_JSON}" ]; then
+          echo "::error::GOOGLE_SERVICES_JSON secret is empty or missing."
+          exit 1
+        fi
+        printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+        python3 -c "import json;json.load(open('android/app/google-services.json'))"
+    - name: Raise Gradle heap (release packaging OOMs at the prebuild default)
+      run: |
+        set -euo pipefail
+        props=android/gradle.properties
+        if grep -q '^org.gradle.jvmargs=' "$props"; then
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8/' "$props"
+        else
+          echo 'org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8' >> "$props"
+        fi
+        grep '^org.gradle.jvmargs=' "$props"
+    - name: Write android/local.properties (AdMob + sdk.dir)
+      run: |
+        set -euo pipefail
+        sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+        test -n "$sdk"
+        {
+          echo "admob.android_app_id=${ADMOB_ANDROID_APP_ID}"
+          echo "admob.banner_ad_unit_id=${ADMOB_BANNER_AD_UNIT_ID}"
+          echo "admob.interstitial_ad_unit_id=${ADMOB_INTERSTITIAL_AD_UNIT_ID}"
+          echo "admob.native_ad_unit_id=${ADMOB_NATIVE_AD_UNIT_ID}"
+          echo "admob.rewarded_ad_unit_id=${ADMOB_REWARDED_AD_UNIT_ID}"
+          echo "admob.delay_app_measurement_init=${ADMOB_DELAY_APP_MEASUREMENT_INIT}"
+          echo "admob.optimize_initialization=${ADMOB_OPTIMIZE_INITIALIZATION}"
+          echo "admob.optimize_ad_loading=${ADMOB_OPTIMIZE_AD_LOADING}"
+          echo "sdk.dir=${sdk}"
+        } > android/local.properties
+        echo "android/local.properties (ad unit IDs masked):"
+        sed -E 's#(=ca-app-pub-[^/~]+[/~])(.{4}).*#\1\2***#' android/local.properties
+    - name: 'Build amazon APK (release, same code as Play: no Play links or review prompt in Driftfeed)'
+      working-directory: android
+      env:
+        ANDROID_CI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_CI_KEYSTORE_PASSWORD }}
+        ANDROID_CI_KEY_ALIAS: ${{ secrets.ANDROID_CI_KEY_ALIAS }}
+        ANDROID_CI_KEY_PASSWORD: ${{ secrets.ANDROID_CI_KEY_PASSWORD }}
+        GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
+        GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
+        GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
+      run: |
+        set -o pipefail
+        chmod +x gradlew
+        ./gradlew :app:assembleRelease --stacktrace 2>&1 | tee -a /tmp/amz-build.log
+        cd "$GITHUB_WORKSPACE"
+        mkdir -p amz-apk
+        cp android/app/build/outputs/apk/release/app-release.apk amz-apk/Driftfeed-amazon-release.apk
+        ls -la amz-apk
+        BT=$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -1)
+        $BT/apksigner verify --print-certs amz-apk/Driftfeed-amazon-release.apk | head -3 || true
+        $BT/aapt2 dump badging amz-apk/Driftfeed-amazon-release.apk | grep -E "^package|native-code|application-label:" || true
+        unzip -p amz-apk/Driftfeed-amazon-release.apk assets/index.android.bundle | grep -o -E "play\.google\.com/store[^\"]*|market://[^\"]*" | head || true
+    - env:
+        DROP_KEY: ${{ secrets.DROP_KEY }}
+      if: failure()
+      name: Ship build log tail to the private drop (on failure)
+      run: |
+        tail -c 60000 /tmp/amz-build.log 2>/dev/null | curl -s -m 60 -X PUT -H "X-Key: $DROP_KEY" --data-binary @- "https://hs-apk-drop.charles-h-hartmann1.workers.dev/c/amzlog_${{ github.event.repository.name }}_r${{ github.run_number }}/0" || true
+    - name: Enable KVM
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+    - name: Start Ollama on the host (the walk uses it as the Driftfeed brain)
+      continue-on-error: true
+      run: |
+        set -euo pipefail
+        curl -fsSL https://ollama.com/install.sh | sh
+        sudo systemctl stop ollama || true
+        (OLLAMA_HOST=0.0.0.0:11434 nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+        sleep 5
+        ollama pull qwen2.5:1.5b
+        curl -s http://127.0.0.1:11434/api/tags
+    - name: Emulator test (no Google Play services, like Fire)
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 33
+        arch: x86_64
+        disable-animations: true
+        disk-size: 4096M
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        profile: Nexus 7 2013
+        ram-size: 3072M
+        script: bash .github/amazon/run-tests.sh
+        target: default
+    - env:
+        DROP_KEY: ${{ secrets.DROP_KEY }}
+      if: always()
+      name: Upload test results to Tab's private drop
+      run: |
+        bash .github/amazon/amazon-upload.sh /tmp/amz-out amz_Driftfeed_r${{ github.run_number }}
+    - if: success()
+      name: Draft release with the amazon APK (not published)
+      uses: softprops/action-gh-release@v2
+      with:
+        draft: true
+        files: amz-apk/Driftfeed-amazon-release.apk
+        name: Amazon build ${{ github.run_number }} (${{ github.sha }})
+        tag_name: amazon-${{ github.run_number }}

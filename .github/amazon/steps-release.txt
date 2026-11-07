@@ -1,0 +1,52 @@
+launch
+wait 25
+shot 01-welcome
+tap (?i)^let.s go$
+wait 5
+tap (?i)^display name$
+type Maya
+back
+wait 1
+shot 02-profile
+scrollto (?i)^continue$
+tap (?i)^continue$
+wait 5
+shot 03-brain-choice
+tap (?i)^use ollama$
+wait 3
+tap (?i)^ollama base url$
+sh input keyevent 123
+sh input keyevent 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67
+type http://10.0.2.2:11434
+tap (?i)^model name$
+sh input keyevent 123
+sh input keyevent 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67
+type qwen2.5:1.5b
+back
+wait 1
+scrollto (?i)^test connection$
+tap (?i)^test connection$
+wait 30
+shot 04-ollama-tested
+scrollto (?i)^continue$
+tap (?i)^continue$
+wait 120
+shot 05-tour
+scrollto (?i)^open my feed$
+tap (?i)^open my feed$
+wait 60
+adclose
+shot 06-feed
+swipeup
+wait 3
+shot 07-feed-scrolled
+tap (?i)^(settings|profile|me)$
+wait 4
+adclose
+shot 08-tab2
+swipeup
+swipeup
+shot 09-tab2-bottom
+back
+wait 2
+shot 10-back
