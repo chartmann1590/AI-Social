@@ -17,11 +17,11 @@ wait 5
 shot 04-brain-choice
 tap (?i)^use ollama$
 wait 3
-tap (?i)^ollama base url$
+tap ^http://localhost:11434$
 sh input keyevent 123
 sh input keyevent 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67
 type http://10.0.2.2:11434
-tap (?i)^model name$
+tap ^llama3\.2$
 sh input keyevent 123
 sh input keyevent 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67
 type qwen2.5:1.5b
